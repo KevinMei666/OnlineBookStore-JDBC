@@ -1,0 +1,45 @@
+# IntelliJ IDEA project files
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+src/out/
+
+# Maven / Gradle build outputs
+target/
+build/
+
+# Logs
+*.log
+logs/
+**/hs_err_pid*.log
+
+# OS generated files
+*.swp
+*.swo
+*.tmp
+*.temp
+*.log*
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE caches
+.classpath
+.project
+.settings/
+.vscode/
+
+# Java / compiled classes
+**/bin/
+**/build/
+**/classes/
+**/*.class
+
+# Local configuration / secrets
+*.local.*
+*.env
+.env
+
+
