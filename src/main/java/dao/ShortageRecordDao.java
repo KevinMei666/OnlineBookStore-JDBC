@@ -15,6 +15,29 @@ import java.util.List;
 
 public class ShortageRecordDao {
 
+    /**
+     * 是否存在未处理的缺书记录（避免重复生成）
+     */
+    public boolean existsUnprocessedByBookIdAndSource(int bookId, String sourceType) {
+        String sql = "SELECT 1 FROM ShortageRecord WHERE BookID = ? AND SourceType = ? AND Processed = 0 LIMIT 1";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, bookId);
+            ps.setString(2, sourceType);
+            rs = ps.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+    }
+
     public int insert(ShortageRecord record) {
         String sql = "INSERT INTO ShortageRecord " +
                 "(BookID, SupplierID, CustomerID, Quantity, Date, SourceType, Processed) " +

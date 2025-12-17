@@ -1,14 +1,14 @@
 package servlet;
 
+import dao.BookSupplierDao;
+import dao.SupplierDao;
 import dao.BookDao;
 import dao.PurchaseItemDao;
 import dao.PurchaseOrderDao;
 import dao.ShortageRecordDao;
-import dao.SupplierDao;
 import model.PurchaseItem;
 import model.PurchaseOrder;
 import model.ShortageRecord;
-import java.util.ArrayList;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -23,6 +23,7 @@ public class PurchaseServlet extends HttpServlet {
     private PurchaseOrderDao purchaseOrderDao;
     private PurchaseItemDao purchaseItemDao;
     private ShortageRecordDao shortageRecordDao;
+    private BookSupplierDao bookSupplierDao;
     private SupplierDao supplierDao;
     private BookDao bookDao;
     
@@ -32,6 +33,7 @@ public class PurchaseServlet extends HttpServlet {
         purchaseOrderDao = new PurchaseOrderDao();
         purchaseItemDao = new PurchaseItemDao();
         shortageRecordDao = new ShortageRecordDao();
+        bookSupplierDao = new BookSupplierDao();
         supplierDao = new SupplierDao();
         bookDao = new BookDao();
     }
@@ -68,6 +70,15 @@ public class PurchaseServlet extends HttpServlet {
         if (pathInfo.equals("/receive")) {
             // 执行到货操作
             handleReceivePurchase(request, response);
+        } else if (pathInfo.equals("/shortage/createPo")) {
+            // 从缺书记录生成采购单
+            handleCreatePoFromShortage(request, response);
+        } else if (pathInfo.equals("/shortage/create")) {
+            // 手动创建缺书记录
+            handleCreateShortagePost(request, response);
+        } else if (pathInfo.equals("/create")) {
+            // 手动创建采购单
+            handleCreatePurchasePost(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -192,9 +203,72 @@ public class PurchaseServlet extends HttpServlet {
      */
     private void handleCreatePurchase(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        // 加载供应商、书目列表供选择
+        List<model.Supplier> suppliers = supplierDao.findAll();
+        List<model.Book> books = bookDao.findAll();
+        request.setAttribute("suppliers", suppliers);
+        request.setAttribute("books", books);
+        request.getRequestDispatcher("/jsp/purchase/purchaseCreate.jsp").forward(request, response);
+    }
+
+    /**
+     * 手动创建采购单（单行明细）
+     */
+    private void handleCreatePurchasePost(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
         HttpSession session = request.getSession();
-        session.setAttribute("infoMessage", "创建采购单功能开发中");
-        response.sendRedirect(request.getContextPath() + "/purchase/list");
+
+        String supplierIdStr = request.getParameter("supplierId");
+        String bookIdStr = request.getParameter("bookId");
+        String quantityStr = request.getParameter("quantity");
+        String unitPriceStr = request.getParameter("unitPrice");
+
+        Integer supplierId = parseIntOrNull(supplierIdStr);
+        Integer bookId = parseIntOrNull(bookIdStr);
+        Integer quantity = parseIntOrNull(quantityStr);
+        java.math.BigDecimal unitPrice = parseBigDecimalOrZero(unitPriceStr);
+
+        if (supplierId == null || supplierId <= 0) {
+            session.setAttribute("errorMessage", "请选择供应商");
+            response.sendRedirect(request.getContextPath() + "/purchase/create");
+            return;
+        }
+        if (bookId == null || bookId <= 0) {
+            session.setAttribute("errorMessage", "请选择书目");
+            response.sendRedirect(request.getContextPath() + "/purchase/create");
+            return;
+        }
+        if (quantity == null || quantity <= 0) {
+            session.setAttribute("errorMessage", "数量必须大于0");
+            response.sendRedirect(request.getContextPath() + "/purchase/create");
+            return;
+        }
+
+        java.math.BigDecimal total = unitPrice.multiply(new java.math.BigDecimal(quantity));
+
+        PurchaseOrder order = new PurchaseOrder();
+        order.setSupplierId(supplierId);
+        order.setShortageId(null);
+        order.setCreateDate(java.time.LocalDateTime.now());
+        order.setStatus("CREATED");
+        order.setTotalAmount(total);
+
+        int poId = purchaseOrderDao.insert(order);
+        if (poId <= 0) {
+            session.setAttribute("errorMessage", "创建采购单失败");
+            response.sendRedirect(request.getContextPath() + "/purchase/create");
+            return;
+        }
+
+        PurchaseItem item = new PurchaseItem();
+        item.setPurchaseOrderId(poId);
+        item.setBookId(bookId);
+        item.setQuantity(quantity);
+        item.setUnitPrice(unitPrice);
+        purchaseItemDao.insert(item);
+
+        session.setAttribute("successMessage", "采购单创建成功，ID=" + poId);
+        response.sendRedirect(request.getContextPath() + "/purchase/detail?poId=" + poId);
     }
     
     /**
@@ -210,10 +284,8 @@ public class PurchaseServlet extends HttpServlet {
             // 显示缺书记录详情（将在后续实现）
             handleShortageDetail(request, response);
         } else if (pathInfo.equals("/shortage/create")) {
-            // 显示创建缺书记录页面（将在后续实现）
-            HttpSession session = request.getSession();
-            session.setAttribute("infoMessage", "手动创建缺书记录功能开发中");
-            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            // 显示创建缺书记录页面
+            loadCreateShortagePage(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -232,6 +304,168 @@ public class PurchaseServlet extends HttpServlet {
         request.getRequestDispatcher("/jsp/purchase/shortageList.jsp").forward(request, response);
     }
     
+    /**
+     * 显示创建缺书记录页面
+     */
+    private void loadCreateShortagePage(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        List<model.Book> books = bookDao.findAll();
+        List<model.Supplier> suppliers = supplierDao.findAll();
+        request.setAttribute("books", books);
+        request.setAttribute("suppliers", suppliers);
+        request.getRequestDispatcher("/jsp/purchase/shortageCreate.jsp").forward(request, response);
+    }
+
+    /**
+     * 手动创建缺书记录
+     */
+    private void handleCreateShortagePost(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        HttpSession session = request.getSession();
+
+        Integer bookId = parseIntOrNull(request.getParameter("bookId"));
+        Integer supplierId = parseIntOrNull(request.getParameter("supplierId"));
+        Integer quantity = parseIntOrNull(request.getParameter("quantity"));
+        String sourceType = request.getParameter("sourceType");
+
+        if (bookId == null || bookId <= 0) {
+            session.setAttribute("errorMessage", "请选择书目");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/create");
+            return;
+        }
+        if (quantity == null || quantity <= 0) {
+            session.setAttribute("errorMessage", "缺货数量必须大于0");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/create");
+            return;
+        }
+        if (sourceType == null || sourceType.trim().isEmpty()) {
+            sourceType = "MANUAL";
+        }
+
+        ShortageRecord record = new ShortageRecord();
+        record.setBookId(bookId);
+        record.setSupplierId(supplierId);
+        record.setCustomerId(null);
+        record.setQuantity(quantity);
+        record.setDate(java.time.LocalDateTime.now());
+        record.setSourceType(sourceType);
+        record.setProcessed(false);
+
+        int id = shortageRecordDao.insert(record);
+        if (id > 0) {
+            session.setAttribute("successMessage", "缺书记录已创建，ID=" + id);
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+        } else {
+            session.setAttribute("errorMessage", "创建缺书记录失败");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/create");
+        }
+    }
+
+    /**
+     * 从缺书记录生成采购单：
+     * 1. 校验缺书记录是否存在、是否未处理
+     * 2. 选择供应商（优先缺书记录中的 SupplierID，否则 BookSupplier 表的首个，否则报错）
+     * 3. 创建采购单（状态 CREATED，关联 ShortageID）
+     * 4. 创建采购明细（BookID，Quantity=缺书数量，单价=0 默认；可后续扩展供货价）
+     * 5. 标记缺书记录为已处理
+     */
+    private void handleCreatePoFromShortage(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        HttpSession session = request.getSession();
+        String shortageIdStr = request.getParameter("shortageId");
+
+        if (shortageIdStr == null || shortageIdStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "缺书记录ID不能为空");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        int shortageId;
+        try {
+            shortageId = Integer.parseInt(shortageIdStr.trim());
+        } catch (NumberFormatException e) {
+            session.setAttribute("errorMessage", "无效的缺书记录ID");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        ShortageRecord shortage = shortageRecordDao.findById(shortageId);
+        if (shortage == null) {
+            session.setAttribute("errorMessage", "缺书记录不存在");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        if (shortage.getProcessed() != null && shortage.getProcessed()) {
+            session.setAttribute("warningMessage", "该缺书记录已处理，无需重复生成采购单");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        if (shortage.getBookId() == null || shortage.getQuantity() == null) {
+            session.setAttribute("errorMessage", "缺书记录缺少书籍或数量信息，无法生成采购单");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        // 选择供应商：优先用缺书记录里的 SupplierID，否则从 BookSupplier 取第一个，否则报错
+        Integer supplierId = shortage.getSupplierId();
+        if (supplierId == null) {
+            java.util.List<model.BookSupplier> suppliers = bookSupplierDao.findByBookId(shortage.getBookId());
+            if (suppliers != null && !suppliers.isEmpty()) {
+                supplierId = suppliers.get(0).getSupplierId();
+            }
+        }
+        if (supplierId == null) {
+            session.setAttribute("errorMessage", "没有可用的供应商，无法生成采购单");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        // 构造采购单
+        PurchaseOrder order = new PurchaseOrder();
+        order.setSupplierId(supplierId);
+        order.setShortageId(shortageId);
+        order.setCreateDate(java.time.LocalDateTime.now());
+        order.setStatus("CREATED");
+        order.setTotalAmount(java.math.BigDecimal.ZERO); // 简化：后续可接入供货价
+
+        // 插入采购单（包含标记缺书为已处理的事务）
+        int poId = purchaseOrderDao.insertWithShortageUpdate(order);
+        if (poId <= 0) {
+            session.setAttribute("errorMessage", "生成采购单失败");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        // 插入采购明细：单价暂定 0（可后续接入供货价），数量=缺书数量
+        PurchaseItem item = new PurchaseItem();
+        item.setPurchaseOrderId(poId);
+        item.setBookId(shortage.getBookId());
+        item.setQuantity(shortage.getQuantity());
+        item.setUnitPrice(java.math.BigDecimal.ZERO);
+        purchaseItemDao.insert(item);
+
+        session.setAttribute("successMessage", "已根据缺书记录生成采购单，ID=" + poId);
+        response.sendRedirect(request.getContextPath() + "/purchase/detail?poId=" + poId);
+    }
+
+    private Integer parseIntOrNull(String val) {
+        if (val == null || val.trim().isEmpty()) return null;
+        try {
+            return Integer.parseInt(val.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private java.math.BigDecimal parseBigDecimalOrZero(String val) {
+        if (val == null || val.trim().isEmpty()) return java.math.BigDecimal.ZERO;
+        try {
+            return new java.math.BigDecimal(val.trim());
+        } catch (NumberFormatException e) {
+            return java.math.BigDecimal.ZERO;
+        }
+    }
+
     /**
      * 显示缺书记录详情（将在后续实现）
      */

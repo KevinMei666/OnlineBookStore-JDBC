@@ -131,6 +131,26 @@ public class BookDao {
         return list;
     }
 
+    public int countAll() {
+        String sql = "SELECT COUNT(*) FROM Book";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return 0;
+    }
+
     public List<Book> findByTitleLike(String keyword) {
         String sql = "SELECT BookID, Title, Publisher, Price, Catalog, CoverImage, " +
                 "StockQuantity, SeriesID, Location FROM Book WHERE Title LIKE ? ORDER BY BookID";

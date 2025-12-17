@@ -59,6 +59,9 @@ public class ShipmentService {
             }
             BigDecimal balance = rs.getBigDecimal("Balance");
             int creditLevel = rs.getInt("CreditLevel");
+            if (rs.wasNull()) {
+                creditLevel = 1;
+            }
             BigDecimal monthlyLimit = rs.getBigDecimal("MonthlyLimit");
             if (balance == null) {
                 balance = BigDecimal.ZERO;
@@ -214,7 +217,8 @@ public class ShipmentService {
             case 5:
                 return new BigDecimal("0.25");
             default:
-                return BigDecimal.ZERO;
+                // 默认按 1 级处理（避免数据库异常值导致显示/计算不一致）
+                return new BigDecimal("0.10");
         }
     }
 

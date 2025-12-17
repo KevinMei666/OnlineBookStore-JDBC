@@ -46,12 +46,12 @@
     String discountDesc = "";
     switch (creditLevel) {
         case 1:
-            discountRate = new BigDecimal("0.00");
-            discountDesc = "无折扣";
+            discountRate = new BigDecimal("0.10");
+            discountDesc = "10%折扣";
             break;
         case 2:
-            discountRate = new BigDecimal("0.05");
-            discountDesc = "5%折扣";
+            discountRate = new BigDecimal("0.15");
+            discountDesc = "15%折扣";
             break;
         case 3:
             discountRate = new BigDecimal("0.15");
@@ -66,8 +66,8 @@
             discountDesc = "25%折扣";
             break;
         default:
-            discountRate = new BigDecimal("0.00");
-            discountDesc = "无折扣";
+            discountRate = new BigDecimal("0.10");
+            discountDesc = "10%折扣";
     }
     
     BigDecimal discountAmount = totalAmount.multiply(discountRate);

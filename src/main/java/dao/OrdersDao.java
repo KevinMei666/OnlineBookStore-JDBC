@@ -153,6 +153,9 @@ public class OrdersDao {
             int creditLevel = 1;
             if (rs.next()) {
                 creditLevel = rs.getInt("CreditLevel");
+                if (rs.wasNull()) {
+                    creditLevel = 1;
+                }
             }
             DBUtil.closeQuietly(rs);
             rs = null;
@@ -309,6 +312,26 @@ public class OrdersDao {
         return list;
     }
 
+    public int countAll() {
+        String sql = "SELECT COUNT(*) FROM Orders";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return 0;
+    }
+
     private Orders mapRow(ResultSet rs) throws SQLException {
         Orders order = new Orders();
         order.setOrderId((Integer) rs.getObject("OrderID"));
@@ -336,7 +359,8 @@ public class OrdersDao {
             case 5:
                 return new BigDecimal("0.25");
             default:
-                return BigDecimal.ZERO;
+                // 默认按 1 级处理（避免数据库异常值导致显示/计算不一致）
+                return new BigDecimal("0.10");
         }
     }
 }

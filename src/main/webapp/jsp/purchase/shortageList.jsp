@@ -56,7 +56,7 @@
                         <i class="bi bi-exclamation-triangle"></i> 缺书记录管理
                     </h2>
                     <a href="${pageContext.request.contextPath}/purchase/shortage/create" class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> 手动创建缺书记录
+                        <i class="bi bi-plus-circle"></i> 创建缺书记录
                     </a>
                 </div>
                 
@@ -144,11 +144,21 @@
                                                         <%= isProcessed ? "已处理" : "未处理" %>
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td class="d-flex gap-2 flex-wrap">
                                                     <a href="${pageContext.request.contextPath}/purchase/shortage/detail?shortageId=<%= record.getShortageId() %>" 
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class="bi bi-eye"></i> 查看
                                                     </a>
+                                                    <form method="post"
+                                                          action="${pageContext.request.contextPath}/purchase/shortage/createPo"
+                                                          class="d-inline">
+                                                        <input type="hidden" name="shortageId" value="<%= record.getShortageId() %>">
+                                                        <button type="submit"
+                                                                class="btn btn-sm btn-success"
+                                                                <%= isProcessed ? "disabled" : "" %>>
+                                                            <i class="bi bi-box-seam"></i> 生成采购单
+                                                        </button>
+                                                    </form>
                                                 </td>
                                             </tr>
                                         <% } %>

@@ -13,10 +13,10 @@
     String creditDesc = "";
     switch (creditLevel) {
         case 1:
-            creditDesc = "1级（无折扣，不可透支）";
+            creditDesc = "1级（10%折扣，不可透支）";
             break;
         case 2:
-            creditDesc = "2级（5%折扣，不可透支）";
+            creditDesc = "2级（15%折扣，不可透支）";
             break;
         case 3:
             creditDesc = "3级（15%折扣，可透支，有额度限制）";
@@ -184,8 +184,8 @@
                         <div class="mb-3">
                             <label for="creditLevel" class="form-label">信用等级 <span class="text-danger">*</span></label>
                             <select class="form-select" id="creditLevel" name="creditLevel" required>
-                                <option value="1" <%= creditLevel == 1 ? "selected" : "" %>>1级（无折扣，不可透支）</option>
-                                <option value="2" <%= creditLevel == 2 ? "selected" : "" %>>2级（5%折扣，不可透支）</option>
+                                <option value="1" <%= creditLevel == 1 ? "selected" : "" %>>1级（10%折扣，不可透支）</option>
+                                <option value="2" <%= creditLevel == 2 ? "selected" : "" %>>2级（15%折扣，不可透支）</option>
                                 <option value="3" <%= creditLevel == 3 ? "selected" : "" %>>3级（15%折扣，可透支，有额度限制）</option>
                                 <option value="4" <%= creditLevel == 4 ? "selected" : "" %>>4级（20%折扣，可透支，有额度限制）</option>
                                 <option value="5" <%= creditLevel == 5 ? "selected" : "" %>>5级（25%折扣，可透支，无额度限制）</option>

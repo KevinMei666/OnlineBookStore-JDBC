@@ -59,7 +59,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <%= currentPath.contains("/purchase") ? "active" : "" %>" 
+                        <a class="nav-link <%= (currentPath.contains("/purchase") && !currentPath.contains("/purchase/shortage")) ? "active" : "" %>" 
                            href="${pageContext.request.contextPath}/purchase/list">
                             <i class="bi bi-box-seam"></i> 采购管理
                         </a>
@@ -70,8 +70,20 @@
                             <i class="bi bi-people"></i> 客户管理
                         </a>
                     </li>
+            <li class="nav-item">
+                <a class="nav-link <%= currentPath.contains("/admin/inventory") ? "active" : "" %>" 
+                   href="${pageContext.request.contextPath}/admin/inventory/list">
+                    <i class="bi bi-box-seam"></i> 库存管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= currentPath.contains("/purchase/shortage") ? "active" : "" %>" 
+                   href="${pageContext.request.contextPath}/purchase/shortage/list">
+                    <i class="bi bi-exclamation-triangle"></i> 缺书记录
+                </a>
+            </li>
                     <li class="nav-item">
-                        <a class="nav-link <%= currentPath.contains("/report") || currentPath.contains("/admin") ? "active" : "" %>" 
+                        <a class="nav-link <%= currentPath.contains("/report") ? "active" : "" %>" 
                            href="${pageContext.request.contextPath}/report/views">
                             <i class="bi bi-bar-chart"></i> 统计报表
                         </a>

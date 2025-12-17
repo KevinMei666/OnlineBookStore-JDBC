@@ -151,6 +151,26 @@ public class CustomerDao {
         return list;
     }
 
+    public int countAll() {
+        String sql = "SELECT COUNT(*) FROM Customer";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return 0;
+    }
+
     /**
      * 收到客户款项后增加账户余额
      * 

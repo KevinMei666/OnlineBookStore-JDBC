@@ -121,6 +121,16 @@
         <url-pattern>/admin/customer/*</url-pattern>
     </servlet-mapping>
 
+    <!-- 管理员端：库存管理与缺书登记 -->
+    <servlet>
+        <servlet-name>InventoryServlet</servlet-name>
+        <servlet-class>servlet.InventoryServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>InventoryServlet</servlet-name>
+        <url-pattern>/admin/inventory/*</url-pattern>
+    </servlet-mapping>
+
 </web-app>
 
 

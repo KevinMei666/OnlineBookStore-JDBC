@@ -22,12 +22,28 @@
                     <p class="text-muted mb-4">
                         本系统用于演示数据库课程设计，涵盖书目管理、订单处理、采购与发货、客户管理以及统计报表等完整业务流程。
                     </p>
+<%
+    // 实时统计：书籍/订单/客户数量
+    int totalBooks = 0;
+    int totalOrders = 0;
+    int totalCustomers = 0;
+    try {
+        dao.BookDao bd = new dao.BookDao();
+        dao.OrdersDao od = new dao.OrdersDao();
+        dao.CustomerDao cd = new dao.CustomerDao();
+        totalBooks = bd.countAll();
+        totalOrders = od.countAll();
+        totalCustomers = cd.countAll();
+    } catch (Exception e) {
+        // 失败时保持为0，避免页面抛错
+    }
+%>
                     <div class="row g-3 text-center">
                         <div class="col-4">
                             <div class="card border-0 bg-light shadow-sm h-100">
                                 <div class="card-body py-3">
                                     <div class="text-muted small">书籍总数</div>
-                                    <div class="h4 mb-0 text-primary">1,280</div>
+                                    <div class="h4 mb-0 text-primary"><%= totalBooks %></div>
                                 </div>
                             </div>
                         </div>
@@ -35,7 +51,7 @@
                             <div class="card border-0 bg-light shadow-sm h-100">
                                 <div class="card-body py-3">
                                     <div class="text-muted small">订单总数</div>
-                                    <div class="h4 mb-0 text-success">3,560</div>
+                                    <div class="h4 mb-0 text-success"><%= totalOrders %></div>
                                 </div>
                             </div>
                         </div>
@@ -43,7 +59,7 @@
                             <div class="card border-0 bg-light shadow-sm h-100">
                                 <div class="card-body py-3">
                                     <div class="text-muted small">客户总数</div>
-                                    <div class="h4 mb-0 text-warning">820</div>
+                                    <div class="h4 mb-0 text-warning"><%= totalCustomers %></div>
                                 </div>
                             </div>
                         </div>
