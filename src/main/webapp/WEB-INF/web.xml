@@ -7,8 +7,9 @@
 
     <display-name>网上书店管理系统</display-name>
 
-    <!-- 默认首页 -->
+    <!-- 默认首页：优先进入登录页，其次是系统首页 -->
     <welcome-file-list>
+        <welcome-file>jsp/auth/login.jsp</welcome-file>
         <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
 
@@ -78,6 +79,44 @@
         <url-pattern>/shipment/*</url-pattern>
     </servlet-mapping>
 
+    <!-- 登录与权限相关 -->
+    <servlet>
+        <servlet-name>LoginServlet</servlet-name>
+        <servlet-class>servlet.LoginServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>LoginServlet</servlet-name>
+        <url-pattern>/auth/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- 客户注册 -->
+    <servlet>
+        <servlet-name>RegisterServlet</servlet-name>
+        <servlet-class>servlet.RegisterServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>RegisterServlet</servlet-name>
+        <url-pattern>/auth/register</url-pattern>
+    </servlet-mapping>
+
+    <!-- 管理员后台权限过滤（拦截后台相关URL） -->
+    <filter>
+        <filter-name>AuthFilter</filter-name>
+        <filter-class>servlet.AuthFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/admin/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/purchase/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/report/*</url-pattern>
+    </filter-mapping>
+
     <!-- 预留：报表与管理后台 -->
     <!-- ReportServlet: /report/* -->
     <!-- AdminServlet: /admin/* -->
@@ -129,6 +168,26 @@
     <servlet-mapping>
         <servlet-name>InventoryServlet</servlet-name>
         <url-pattern>/admin/inventory/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- 管理员端：图书上架/下架管理 -->
+    <servlet>
+        <servlet-name>AdminBookServlet</servlet-name>
+        <servlet-class>servlet.AdminBookServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>AdminBookServlet</servlet-name>
+        <url-pattern>/admin/book/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- 管理员端：供应商管理 -->
+    <servlet>
+        <servlet-name>AdminSupplierServlet</servlet-name>
+        <servlet-class>servlet.AdminSupplierServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>AdminSupplierServlet</servlet-name>
+        <url-pattern>/admin/supplier/*</url-pattern>
     </servlet-mapping>
 
 </web-app>

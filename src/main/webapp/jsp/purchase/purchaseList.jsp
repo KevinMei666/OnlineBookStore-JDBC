@@ -70,13 +70,14 @@
                                     <tbody>
                                         <% for (PurchaseOrder po : purchaseOrders) { 
                                             String status = po.getStatus() != null ? po.getStatus() : "CREATED";
+                                            String statusNorm = status != null ? status.trim().toUpperCase() : "CREATED";
                                             String statusBadgeClass = "";
                                             String statusText = "";
                                             
-                                            if ("CREATED".equals(status)) {
+                                            if ("CREATED".equals(statusNorm)) {
                                                 statusBadgeClass = "bg-warning";
                                                 statusText = "已创建";
-                                            } else if ("COMPLETED".equals(status)) {
+                                            } else if ("COMPLETED".equals(statusNorm)) {
                                                 statusBadgeClass = "bg-success";
                                                 statusText = "已完成";
                                             } else {
@@ -107,7 +108,7 @@
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class="bi bi-eye"></i> 查看明细
                                                     </a>
-                                                    <% if ("CREATED".equals(status)) { %>
+                                                    <% if ("CREATED".equals(statusNorm)) { %>
                                                         <a href="${pageContext.request.contextPath}/purchase/detail?poId=<%= po.getPoId() %>#receive" 
                                                            class="btn btn-sm btn-success">
                                                             <i class="bi bi-check-circle"></i> 到货

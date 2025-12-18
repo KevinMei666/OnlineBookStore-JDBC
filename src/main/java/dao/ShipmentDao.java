@@ -68,6 +68,30 @@ public class ShipmentDao {
         return list;
     }
 
+    /**
+     * 今日发货订单数（按 Shipment.ShipDate 统计，按 OrderID 去重）
+     */
+    public int countDistinctOrdersShippedToday() {
+        String sql = "SELECT COUNT(DISTINCT OrderID) FROM Shipment " +
+                "WHERE ShipDate >= CURDATE() AND ShipDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return 0;
+    }
+
     private Shipment mapRow(ResultSet rs) throws SQLException {
         Shipment shipment = new Shipment();
         shipment.setShipmentId((Integer) rs.getObject("ShipmentID"));

@@ -8,11 +8,12 @@
         currentPath = currentPath.substring(contextPath.length());
     }
     
-    // 获取当前登录用户（暂时写死，后续可从session获取）
+    // 获取当前登录用户（从session获取）
     String currentUser = (String) session.getAttribute("currentUser");
-    if (currentUser == null || currentUser.isEmpty()) {
-        currentUser = "测试用户";
-    }
+    String currentRole = (String) session.getAttribute("currentRole");
+    boolean loggedIn = currentUser != null && !currentUser.isEmpty();
+    boolean isAdmin = "ADMIN".equals(currentRole);
+    boolean isCustomer = "CUSTOMER".equals(currentRole);
 %>
 <!-- 图标字体（Bootstrap Icons） -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -34,6 +35,7 @@
             <!-- 导航菜单 -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    <!-- 前台公共导航：所有人可见 -->
                     <li class="nav-item">
                         <a class="nav-link <%= currentPath.equals("/index.jsp") || currentPath.equals("/") ? "active" : "" %>" 
                            href="${pageContext.request.contextPath}/index.jsp">
@@ -46,67 +48,103 @@
                             <i class="bi bi-search"></i> 书目查询
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link <%= currentPath.contains("/order/cart") ? "active" : "" %>" 
-                           href="${pageContext.request.contextPath}/order/cart">
-                            <i class="bi bi-cart-plus"></i> 下单
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <%= (currentPath.contains("/order") && !currentPath.contains("/order/cart")) ? "active" : "" %>" 
-                           href="${pageContext.request.contextPath}/order/list">
-                            <i class="bi bi-list-ul"></i> 订单管理
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <%= (currentPath.contains("/purchase") && !currentPath.contains("/purchase/shortage")) ? "active" : "" %>" 
-                           href="${pageContext.request.contextPath}/purchase/list">
-                            <i class="bi bi-box-seam"></i> 采购管理
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <%= currentPath.contains("/admin/customer") ? "active" : "" %>" 
-                           href="${pageContext.request.contextPath}/admin/customer/list">
-                            <i class="bi bi-people"></i> 客户管理
-                        </a>
-                    </li>
-            <li class="nav-item">
-                <a class="nav-link <%= currentPath.contains("/admin/inventory") ? "active" : "" %>" 
-                   href="${pageContext.request.contextPath}/admin/inventory/list">
-                    <i class="bi bi-box-seam"></i> 库存管理
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <%= currentPath.contains("/purchase/shortage") ? "active" : "" %>" 
-                   href="${pageContext.request.contextPath}/purchase/shortage/list">
-                    <i class="bi bi-exclamation-triangle"></i> 缺书记录
-                </a>
-            </li>
-                    <li class="nav-item">
-                        <a class="nav-link <%= currentPath.contains("/report") ? "active" : "" %>" 
-                           href="${pageContext.request.contextPath}/report/views">
-                            <i class="bi bi-bar-chart"></i> 统计报表
-                        </a>
-                    </li>
+                    <!-- 只有登录用户（客户或管理员）才显示下单与订单管理入口 -->
+                    <% if (loggedIn) { %>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/order/cart") ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/order/cart">
+                                <i class="bi bi-cart-plus"></i> 下单
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (currentPath.contains("/order") && !currentPath.contains("/order/cart")) ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/order/list">
+                                <i class="bi bi-list-ul"></i> 订单管理
+                            </a>
+                        </li>
+                    <% } %>
+
+                    <!-- 后台管理导航：仅管理员可见 -->
+                    <% if (isAdmin) { %>
+                        <li><hr class="dropdown-divider d-none d-lg-block"></li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/admin/customer") ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/admin/customer/list">
+                                <i class="bi bi-people"></i> 客户管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/admin/inventory") ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/admin/inventory/list">
+                                <i class="bi bi-box-seam"></i> 库存管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/admin/book") ? "active" : "" %>"
+                               href="${pageContext.request.contextPath}/admin/book/list">
+                                <i class="bi bi-journal-bookmark"></i> 图书管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/purchase/shortage") ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/purchase/shortage/list">
+                                <i class="bi bi-exclamation-triangle"></i> 缺书记录
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (currentPath.contains("/purchase") && !currentPath.contains("/purchase/shortage")) ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/purchase/list">
+                                <i class="bi bi-box-seam"></i> 采购管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/admin/supplier") ? "active" : "" %>"
+                               href="${pageContext.request.contextPath}/admin/supplier/list">
+                                <i class="bi bi-building"></i> 供应商管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/report") ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/report/views">
+                                <i class="bi bi-bar-chart"></i> 统计报表
+                            </a>
+                        </li>
+                    <% } %>
                 </ul>
                 
                 <!-- 右侧用户信息 -->
                 <ul class="navbar-nav">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-circle"></i> <%= currentUser %>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="${pageContext.request.contextPath}/customer/info">
-                                <i class="bi bi-person"></i> 个人信息</a></li>
-                            <li><a class="dropdown-item" href="${pageContext.request.contextPath}/customer/orders">
-                                <i class="bi bi-clock-history"></i> 订单历史</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#">
-                                <i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
-                        </ul>
-                    </li>
+                    <% if (loggedIn) { %>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i>
+                                <%= currentUser %>
+                                <% if ("ADMIN".equals(currentRole)) { %>
+                                    <span class="badge bg-danger ms-1">管理员</span>
+                                <% } %>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <% if (isCustomer) { %>
+                                    <li><a class="dropdown-item" href="${pageContext.request.contextPath}/customer/info">
+                                        <i class="bi bi-person"></i> 个人信息</a></li>
+                                    <li><a class="dropdown-item" href="${pageContext.request.contextPath}/customer/orders">
+                                        <i class="bi bi-clock-history"></i> 订单历史</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                <% } else { %>
+                                    <li><hr class="dropdown-divider"></li>
+                                <% } %>
+                                <li><a class="dropdown-item" href="${pageContext.request.contextPath}/auth/logout">
+                                    <i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
+                            </ul>
+                        </li>
+                    <% } else { %>
+                        <li class="nav-item">
+                            <a class="nav-link" href="${pageContext.request.contextPath}/jsp/auth/login.jsp">
+                                <i class="bi bi-box-arrow-in-right"></i> 登录
+                            </a>
+                        </li>
+                    <% } %>
                 </ul>
             </div>
         </div>

@@ -1,6 +1,7 @@
 package dao;
 
 import model.BookSupplier;
+import model.SupplierSupply;
 import util.DBUtil;
 
 import java.math.BigDecimal;
@@ -88,6 +89,45 @@ public class BookSupplierDao {
                 bs.setSupplierId((Integer) rs.getObject("SupplierID"));
                 bs.setSupplyPrice(rs.getBigDecimal("SupplyPrice"));
                 list.add(bs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return list;
+    }
+
+    /**
+     * 查询某个供应商供应的书目（带书名/出版社/零售价/库存/供货价）
+     */
+    public List<SupplierSupply> findSupplyBooksBySupplierId(int supplierId) {
+        String sql = "SELECT bs.SupplierID, b.BookID, b.Title, b.Publisher, b.Price AS RetailPrice, " +
+                "b.StockQuantity, bs.SupplyPrice " +
+                "FROM BookSupplier bs " +
+                "JOIN Book b ON bs.BookID = b.BookID " +
+                "WHERE bs.SupplierID = ? " +
+                "ORDER BY b.BookID";
+
+        List<SupplierSupply> list = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, supplierId);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                SupplierSupply s = new SupplierSupply();
+                s.setSupplierId((Integer) rs.getObject("SupplierID"));
+                s.setBookId((Integer) rs.getObject("BookID"));
+                s.setTitle(rs.getString("Title"));
+                s.setPublisher(rs.getString("Publisher"));
+                s.setRetailPrice(rs.getBigDecimal("RetailPrice"));
+                s.setStockQuantity((Integer) rs.getObject("StockQuantity"));
+                s.setSupplyPrice(rs.getBigDecimal("SupplyPrice"));
+                list.add(s);
             }
         } catch (SQLException e) {
             e.printStackTrace();

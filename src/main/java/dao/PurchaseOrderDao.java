@@ -244,6 +244,32 @@ public class PurchaseOrderDao {
         }
     }
 
+    /**
+     * 根据缺书记录ID查询关联的采购单列表
+     */
+    public List<PurchaseOrder> findByShortageId(int shortageId) {
+        String sql = "SELECT POID, SupplierID, ShortageID, CreateDate, Status, TotalAmount " +
+                "FROM PurchaseOrder WHERE ShortageID = ? ORDER BY POID DESC";
+        List<PurchaseOrder> list = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, shortageId);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return list;
+    }
+
     public List<PurchaseOrder> findAll() {
         String sql = "SELECT POID, SupplierID, ShortageID, CreateDate, Status, TotalAmount " +
                 "FROM PurchaseOrder ORDER BY POID DESC";
@@ -264,6 +290,29 @@ public class PurchaseOrderDao {
             DBUtil.closeQuietly(rs, ps, conn);
         }
         return list;
+    }
+
+    /**
+     * 待处理采购单数量：Status != 'COMPLETED'（NULL 也视为待处理）
+     */
+    public int countPending() {
+        String sql = "SELECT COUNT(*) FROM PurchaseOrder WHERE Status IS NULL OR UPPER(Status) <> 'COMPLETED'";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return 0;
     }
 
     private PurchaseOrder mapRow(ResultSet rs) throws SQLException {

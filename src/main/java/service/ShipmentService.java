@@ -46,10 +46,11 @@ public class ShipmentService {
                 throw new SQLException("Order not found, OrderID=" + orderId);
             }
             int customerId = rs.getInt("CustomerID");
+            String orderStatus = rs.getString("Status");
             rs.close();
             rs = null;
 
-            // 2. 锁定客户，获取余额、信用等级、透支额度
+            // 2. 锁定客户，获取余额、信用等级、透支额度（如订单已支付则仅校验存在性）
             String selectCustomerSql = "SELECT Balance, CreditLevel, MonthlyLimit FROM Customer WHERE CustomerID = ? FOR UPDATE";
             selectCustomerPs = conn.prepareStatement(selectCustomerSql);
             selectCustomerPs.setInt(1, customerId);
@@ -105,32 +106,38 @@ public class ShipmentService {
                 throw new SQLException("Invalid ship quantity. Remaining=" + remaining + ", shipQuantity=" + shipQuantity);
             }
 
-            // 5. 计算折扣和扣款金额
-            BigDecimal discountRate = getDiscountRate(creditLevel);
-            BigDecimal discountedUnit = unitPrice.multiply(BigDecimal.ONE.subtract(discountRate));
-            BigDecimal charge = discountedUnit.multiply(BigDecimal.valueOf(shipQuantity)).setScale(2, RoundingMode.HALF_UP);
+            boolean alreadyPaid = "PAID".equalsIgnoreCase(orderStatus);
 
-            // 6. 信用规则：1-2级不可透支；3-5级可透支，额度为 MonthlyLimit
-            BigDecimal newBalance = balance.subtract(charge);
-            if (creditLevel <= 2) {
-                if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
-                    throw new SQLException("Insufficient balance for shipment. Need=" + charge + ", Balance=" + balance);
-                }
-            } else {
-                // 允许透支：余额最低可到 -MonthlyLimit
-                BigDecimal minAllowed = monthlyLimit.negate();
-                if (newBalance.compareTo(minAllowed) < 0) {
-                    throw new SQLException("Over monthly credit limit. NewBalance=" + newBalance + ", Limit=" + monthlyLimit);
-                }
-            }
+            BigDecimal charge = BigDecimal.ZERO;
+            BigDecimal newBalance = balance;
+            if (!alreadyPaid) {
+                // 5. 计算折扣和扣款金额
+                BigDecimal discountRate = getDiscountRate(creditLevel);
+                BigDecimal discountedUnit = unitPrice.multiply(BigDecimal.ONE.subtract(discountRate));
+                charge = discountedUnit.multiply(BigDecimal.valueOf(shipQuantity)).setScale(2, RoundingMode.HALF_UP);
 
-            // 7. 扣减余额
-            String updateCustomerSql = "UPDATE Customer SET Balance = ? WHERE CustomerID = ?";
-            updateCustomerPs = conn.prepareStatement(updateCustomerSql);
-            updateCustomerPs.setBigDecimal(1, newBalance);
-            updateCustomerPs.setInt(2, customerId);
-            if (updateCustomerPs.executeUpdate() != 1) {
-                throw new SQLException("Failed to update customer balance, CustomerID=" + customerId);
+                // 6. 信用规则：1-2级不可透支；3-5级可透支，额度为 MonthlyLimit
+                newBalance = balance.subtract(charge);
+                if (creditLevel <= 2) {
+                    if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new SQLException("Insufficient balance for shipment. Need=" + charge + ", Balance=" + balance);
+                    }
+                } else {
+                    // 允许透支：余额最低可到 -MonthlyLimit
+                    BigDecimal minAllowed = monthlyLimit.negate();
+                    if (newBalance.compareTo(minAllowed) < 0) {
+                        throw new SQLException("Over monthly credit limit. NewBalance=" + newBalance + ", Limit=" + monthlyLimit);
+                    }
+                }
+
+                // 7. 扣减余额
+                String updateCustomerSql = "UPDATE Customer SET Balance = ? WHERE CustomerID = ?";
+                updateCustomerPs = conn.prepareStatement(updateCustomerSql);
+                updateCustomerPs.setBigDecimal(1, newBalance);
+                updateCustomerPs.setInt(2, customerId);
+                if (updateCustomerPs.executeUpdate() != 1) {
+                    throw new SQLException("Failed to update customer balance, CustomerID=" + customerId);
+                }
             }
 
             // 8. 插入发货记录

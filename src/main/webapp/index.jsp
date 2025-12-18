@@ -27,13 +27,24 @@
     int totalBooks = 0;
     int totalOrders = 0;
     int totalCustomers = 0;
+    int todayNewOrders = 0;
+    int todayShippedOrders = 0;
+    int lowStockBooks = 0;
+    int pendingPurchaseOrders = 0;
+    int stockThreshold = 10; // 与库存管理默认阈值保持一致（可后续做成可配置）
     try {
         dao.BookDao bd = new dao.BookDao();
         dao.OrdersDao od = new dao.OrdersDao();
         dao.CustomerDao cd = new dao.CustomerDao();
+        dao.ShipmentDao sd = new dao.ShipmentDao();
+        dao.PurchaseOrderDao pod = new dao.PurchaseOrderDao();
         totalBooks = bd.countAll();
         totalOrders = od.countAll();
         totalCustomers = cd.countAll();
+        todayNewOrders = od.countCreatedToday();
+        todayShippedOrders = sd.countDistinctOrdersShippedToday();
+        lowStockBooks = bd.countLowStock(stockThreshold);
+        pendingPurchaseOrders = pod.countPending();
     } catch (Exception e) {
         // 失败时保持为0，避免页面抛错
     }
@@ -72,10 +83,10 @@
                 <div class="card-body py-4 px-4">
                     <h2 class="h5 mb-3">今日概览</h2>
                     <ul class="list-unstyled small mb-0">
-                        <li class="mb-2">• 今日新增订单：<span class="text-success fw-semibold">36</span></li>
-                        <li class="mb-2">• 今日发货订单：<span class="text-primary fw-semibold">28</span></li>
-                        <li class="mb-2">• 库存预警书目：<span class="text-danger fw-semibold">5</span></li>
-                        <li class="mb-2">• 待处理采购单：<span class="text-warning fw-semibold">3</span></li>
+                        <li class="mb-2">• 今日新增订单：<span class="text-success fw-semibold"><%= todayNewOrders %></span></li>
+                        <li class="mb-2">• 今日发货订单：<span class="text-primary fw-semibold"><%= todayShippedOrders %></span></li>
+                        <li class="mb-2">• 库存预警书目：<span class="text-danger fw-semibold"><%= lowStockBooks %></span></li>
+                        <li class="mb-2">• 待处理采购单：<span class="text-warning fw-semibold"><%= pendingPurchaseOrders %></span></li>
                     </ul>
                 </div>
             </div>

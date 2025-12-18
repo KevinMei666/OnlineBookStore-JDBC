@@ -171,7 +171,7 @@ public class PurchaseServlet extends HttpServlet {
             }
             
             // 检查采购单状态
-            if ("COMPLETED".equals(purchaseOrder.getStatus())) {
+            if (purchaseOrder.getStatus() != null && "COMPLETED".equalsIgnoreCase(purchaseOrder.getStatus().trim())) {
                 session.setAttribute("warningMessage", "该采购单已完成，无需重复操作");
                 response.sendRedirect(request.getContextPath() + "/purchase/detail?poId=" + poId);
                 return;
@@ -472,8 +472,36 @@ public class PurchaseServlet extends HttpServlet {
     private void handleShortageDetail(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession();
-        session.setAttribute("infoMessage", "缺书记录详情功能开发中");
-        response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+        String shortageIdStr = request.getParameter("shortageId");
+
+        if (shortageIdStr == null || shortageIdStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "缺书记录ID不能为空");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        int shortageId;
+        try {
+            shortageId = Integer.parseInt(shortageIdStr.trim());
+        } catch (NumberFormatException e) {
+            session.setAttribute("errorMessage", "无效的缺书记录ID");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        ShortageRecord record = shortageRecordDao.findById(shortageId);
+        if (record == null) {
+            session.setAttribute("errorMessage", "未找到指定的缺书记录");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+
+        // 查询关联的采购单列表（如果有的话）
+        List<PurchaseOrder> relatedOrders = purchaseOrderDao.findByShortageId(shortageId);
+
+        request.setAttribute("shortageRecord", record);
+        request.setAttribute("relatedPurchaseOrders", relatedOrders);
+        request.getRequestDispatcher("/jsp/purchase/shortageDetail.jsp").forward(request, response);
     }
 }
 

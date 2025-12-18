@@ -27,7 +27,6 @@ public class BookServlet extends HttpServlet {
             throws ServletException, IOException {
         
         String pathInfo = request.getPathInfo();
-        String action = request.getParameter("action");
         
         // 处理书籍详情页
         if (pathInfo != null && pathInfo.equals("/detail")) {
@@ -117,8 +116,8 @@ public class BookServlet extends HttpServlet {
             int bookId = Integer.parseInt(bookIdStr);
             Book book = bookDao.findById(bookId);
             
-            if (book == null) {
-                request.setAttribute("errorMessage", "未找到指定的书籍");
+            if (book == null || Boolean.FALSE.equals(book.getActive())) {
+                request.setAttribute("errorMessage", "未找到指定的书籍，或该书已下架");
                 request.getRequestDispatcher("/jsp/book/bookList.jsp").forward(request, response);
                 return;
             }
@@ -164,8 +163,8 @@ public class BookServlet extends HttpServlet {
             int bookId = Integer.parseInt(bookIdStr);
             Book book = bookDao.findById(bookId);
             
-            if (book == null) {
-                session.setAttribute("errorMessage", "未找到指定的书籍");
+            if (book == null || Boolean.FALSE.equals(book.getActive())) {
+                session.setAttribute("errorMessage", "未找到指定的书籍，或该书已下架");
                 response.sendRedirect(request.getContextPath() + "/book");
                 return;
             }

@@ -37,7 +37,7 @@
                         <label class="form-label">邮箱</label>
                         <input type="text" class="form-control" value="${customer.email}" readonly>
                     </div>
-                </div>
+                    </div>
 
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">

@@ -16,10 +16,12 @@
         return;
     }
     
-    // 获取当前客户信息（暂时从session获取，或使用默认值）
-    Integer customerId = (Integer) sessionObj.getAttribute("customerId");
+    // 获取当前登录客户ID（必须先登录）
+    Integer customerId = (Integer) sessionObj.getAttribute("currentCustomerId");
     if (customerId == null) {
-        customerId = 1; // 默认客户ID，实际应从登录信息获取
+        sessionObj.setAttribute("warningMessage", "请先登录后再结算订单");
+        response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+        return;
     }
     
     CustomerDao customerDao = new CustomerDao();

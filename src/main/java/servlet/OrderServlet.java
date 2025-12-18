@@ -7,7 +7,6 @@ import dao.OrdersDao;
 import dao.ShipmentDao;
 import model.Book;
 import model.CartItem;
-import model.Customer;
 import model.OrderItem;
 
 import javax.servlet.ServletException;
@@ -16,7 +15,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,7 +64,6 @@ public class OrderServlet extends HttpServlet {
             throws ServletException, IOException {
         
         String pathInfo = request.getPathInfo();
-        String action = request.getParameter("action");
         
         if (pathInfo == null || pathInfo.equals("/") || pathInfo.equals("/add")) {
             // 添加商品到购物车
@@ -202,10 +199,12 @@ public class OrderServlet extends HttpServlet {
             return;
         }
         
-        // 获取当前客户ID（暂时从session获取，或使用默认值）
-        Integer customerId = (Integer) session.getAttribute("customerId");
+        // 获取当前客户ID（必须登录为客户）
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
         if (customerId == null) {
-            customerId = 1; // 默认客户ID，实际应从登录信息获取
+            session.setAttribute("warningMessage", "请先以客户身份登录后再创建订单");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
         }
         
         try {
@@ -339,15 +338,36 @@ public class OrderServlet extends HttpServlet {
             throws ServletException, IOException {
         
         HttpSession session = request.getSession();
-        
-        // 获取当前客户ID（暂时从session获取，或使用默认值）
-        Integer customerId = (Integer) session.getAttribute("customerId");
-        if (customerId == null) {
-            customerId = 1; // 默认客户ID，实际应从登录信息获取
+        String currentRole = (String) session.getAttribute("currentRole");
+
+        List<model.Orders> orders;
+        if ("ADMIN".equals(currentRole)) {
+            // 管理员查看全部订单
+            orders = ordersDao.findAll();
+            // 构建客户名称映射，便于在列表中展示下单客户
+            java.util.Map<Integer, String> customerNameMap = new java.util.HashMap<>();
+            for (model.Orders o : orders) {
+                if (o.getCustomerId() != null && !customerNameMap.containsKey(o.getCustomerId())) {
+                    model.Customer c = customerDao.findById(o.getCustomerId());
+                    if (c != null) {
+                        String name = c.getName() != null && !c.getName().isEmpty()
+                                ? c.getName()
+                                : (c.getEmail() != null ? c.getEmail() : ("客户#" + c.getCustomerId()));
+                        customerNameMap.put(o.getCustomerId(), name);
+                    }
+                }
+            }
+            request.setAttribute("customerNameMap", customerNameMap);
+        } else {
+            // 客户：只能查看自己的订单，必须登录
+            Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+            if (customerId == null) {
+                session.setAttribute("warningMessage", "请先登录后查看订单列表");
+                response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+                return;
+            }
+            orders = ordersDao.findByCustomerId(customerId);
         }
-        
-        // 查询订单列表
-        List<model.Orders> orders = ordersDao.findByCustomerId(customerId);
         
         request.setAttribute("orders", orders);
         request.getRequestDispatcher("/jsp/order/orderList.jsp").forward(request, response);
@@ -377,6 +397,18 @@ public class OrderServlet extends HttpServlet {
                 session.setAttribute("errorMessage", "未找到指定的订单");
                 response.sendRedirect(request.getContextPath() + "/order/list");
                 return;
+            }
+
+            // 权限控制：非管理员只能查看自己的订单
+            String currentRole = (String) session.getAttribute("currentRole");
+            if (!"ADMIN".equals(currentRole)) {
+                Integer currentCustomerId = (Integer) session.getAttribute("currentCustomerId");
+                if (currentCustomerId == null || order.getCustomerId() == null
+                        || !order.getCustomerId().equals(currentCustomerId)) {
+                    session.setAttribute("errorMessage", "无权查看该订单");
+                    response.sendRedirect(request.getContextPath() + "/order/list");
+                    return;
+                }
             }
             
             // 查询订单明细

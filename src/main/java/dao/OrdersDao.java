@@ -6,6 +6,7 @@ import service.AutoPurchaseService;
 import util.DBUtil;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -130,7 +131,9 @@ public class OrdersDao {
         String selectStockSql = "SELECT StockQuantity FROM Book WHERE BookID = ? FOR UPDATE";
         String updateStockSql = "UPDATE Book SET StockQuantity = StockQuantity - ? WHERE BookID = ?";
         String selectCustomerSql = "SELECT CreditLevel FROM Customer WHERE CustomerID = ?";
+        String selectCustomerBalanceSql = "SELECT Balance, CreditLevel, MonthlyLimit FROM Customer WHERE CustomerID = ? FOR UPDATE";
         String updateOrderTotalSql = "UPDATE Orders SET TotalAmount = ? , Status = ? WHERE OrderID = ?";
+        String updateCustomerBalanceSql = "UPDATE Customer SET Balance = ? WHERE CustomerID = ?";
 
         Connection conn = null;
         PreparedStatement orderPs = null;
@@ -139,6 +142,8 @@ public class OrdersDao {
         PreparedStatement updateStockPs = null;
         PreparedStatement selectCustomerPs = null;
         PreparedStatement updateOrderPs = null;
+        PreparedStatement selectBalancePs = null;
+        PreparedStatement updateBalancePs = null;
         ResultSet rs = null;
         int generatedOrderId = -1;
 
@@ -228,14 +233,56 @@ public class OrdersDao {
                 discountedTotal = discountedTotal.add(discountedLine);
             }
 
-            // 3. 更新订单总金额与状态
+            // 3. 扣款（下单即支付），按信用规则校验余额/透支
+            selectBalancePs = conn.prepareStatement(selectCustomerBalanceSql);
+            selectBalancePs.setInt(1, customerId);
+            rs = selectBalancePs.executeQuery();
+            if (!rs.next()) {
+                throw new SQLException("Customer not found, CustomerID=" + customerId);
+            }
+            BigDecimal balance = rs.getBigDecimal("Balance");
+            if (balance == null) {
+                balance = BigDecimal.ZERO;
+            }
+            int creditLevelForPay = rs.getInt("CreditLevel");
+            if (rs.wasNull()) {
+                creditLevelForPay = 1;
+            }
+            BigDecimal monthlyLimit = rs.getBigDecimal("MonthlyLimit");
+            if (monthlyLimit == null) {
+                monthlyLimit = BigDecimal.ZERO;
+            }
+            DBUtil.closeQuietly(rs);
+            rs = null;
+
+            BigDecimal newBalance = balance.subtract(discountedTotal);
+            if (creditLevelForPay <= 2) {
+                if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new SQLException("余额不足，请充值后再下单");
+                }
+            } else {
+                BigDecimal minAllowed = monthlyLimit.negate();
+                if (newBalance.compareTo(minAllowed) < 0) {
+                    throw new SQLException("超过透支额度，请减少购买或充值");
+                }
+            }
+
+            updateBalancePs = conn.prepareStatement(updateCustomerBalanceSql);
+            updateBalancePs.setBigDecimal(1, newBalance.setScale(2, RoundingMode.HALF_UP));
+            updateBalancePs.setInt(2, customerId);
+            int balanceUpdated = updateBalancePs.executeUpdate();
+            if (balanceUpdated != 1) {
+                throw new SQLException("扣款失败，请重试");
+            }
+
+            // 4. 更新订单总金额与状态：支付完成标记为 PAID
             updateOrderPs = conn.prepareStatement(updateOrderTotalSql);
-            updateOrderPs.setBigDecimal(1, discountedTotal);
-            updateOrderPs.setString(2, "CREATED");
+            updateOrderPs.setBigDecimal(1, discountedTotal.setScale(2, RoundingMode.HALF_UP));
+            updateOrderPs.setString(2, "PAID");
             updateOrderPs.setInt(3, generatedOrderId);
             updateOrderPs.executeUpdate();
 
-            // 4. 所有步骤成功后提交事务
+            // 5. 所有步骤成功后提交事务
             conn.commit();
             return generatedOrderId;
         } catch (SQLException e) {
@@ -246,8 +293,7 @@ public class OrdersDao {
                     rollbackEx.printStackTrace();
                 }
             }
-            e.printStackTrace();
-            return -1;
+            throw new RuntimeException(e.getMessage(), e);
         } finally {
             if (conn != null) {
                 try {
@@ -312,8 +358,57 @@ public class OrdersDao {
         return list;
     }
 
+    /**
+     * 管理员查看所有订单
+     */
+    public List<Orders> findAll() {
+        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status " +
+                "FROM Orders ORDER BY OrderDate DESC";
+        List<Orders> list = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return list;
+    }
+
     public int countAll() {
         String sql = "SELECT COUNT(*) FROM Orders";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return 0;
+    }
+
+    /**
+     * 今日新增订单数（按 OrderDate 统计）
+     */
+    public int countCreatedToday() {
+        String sql = "SELECT COUNT(*) FROM Orders " +
+                "WHERE OrderDate >= CURDATE() AND OrderDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;

@@ -64,15 +64,24 @@ public class CustomerServlet extends HttpServlet {
      */
     private void handleCustomerInfo(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
+
         HttpSession session = request.getSession();
-        
-        // 获取当前客户ID（暂时从session获取，或使用默认值）
-        Integer customerId = (Integer) session.getAttribute("customerId");
-        if (customerId == null) {
-            customerId = 1; // 默认客户ID，实际应从登录信息获取
+
+        // 仅允许已登录的客户查看自己的信息
+        String currentRole = (String) session.getAttribute("currentRole");
+        if (!"CUSTOMER".equals(currentRole)) {
+            session.setAttribute("warningMessage", "请以客户身份登录后查看个人信息");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
         }
-        
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+        if (customerId == null) {
+            session.setAttribute("warningMessage", "登录已失效，请重新登录后查看个人信息");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
         // 查询客户信息
         Customer customer = customerDao.findById(customerId);
         if (customer == null) {
@@ -80,7 +89,7 @@ public class CustomerServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/");
             return;
         }
-        
+
         request.setAttribute("customer", customer);
         request.getRequestDispatcher("/jsp/customer/customerInfo.jsp").forward(request, response);
     }
@@ -92,11 +101,20 @@ public class CustomerServlet extends HttpServlet {
             throws ServletException, IOException {
         
         HttpSession session = request.getSession();
-        
-        // 获取当前客户ID（暂时从session获取，或使用默认值）
-        Integer customerId = (Integer) session.getAttribute("customerId");
+
+        // 仅允许已登录的客户查看自己的订单历史
+        String currentRole = (String) session.getAttribute("currentRole");
+        if (!"CUSTOMER".equals(currentRole)) {
+            session.setAttribute("warningMessage", "请以客户身份登录后查看订单历史");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
         if (customerId == null) {
-            customerId = 1; // 默认客户ID，实际应从登录信息获取
+            session.setAttribute("warningMessage", "登录已失效，请重新登录后查看订单历史");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
         }
         
         // 查询订单历史

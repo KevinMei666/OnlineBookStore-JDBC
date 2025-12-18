@@ -14,9 +14,15 @@ import java.util.List;
 
 public class BookDao {
 
+    private static final String BASE_COLUMNS = "BookID, Title, Publisher, Price, Catalog, CoverImage, " +
+            "StockQuantity, SeriesID, Location, IsActive";
+    private static final String BASE_COLUMNS_WITH_ALIAS = "b.BookID, b.Title, b.Publisher, b.Price, b.Catalog, b.CoverImage, " +
+            "b.StockQuantity, b.SeriesID, b.Location, b.IsActive";
+    private static final String ACTIVE_CONDITION = "COALESCE(IsActive, 1) = 1";
+
     public int insert(Book book) {
         String sql = "INSERT INTO Book (BookID, Title, Publisher, Price, Catalog, CoverImage, " +
-                "StockQuantity, SeriesID, Location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "StockQuantity, SeriesID, Location, IsActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         Connection conn = null;
         PreparedStatement ps = null;
         try {
@@ -31,6 +37,7 @@ public class BookDao {
             ps.setObject(7, book.getStockQuantity());
             ps.setObject(8, book.getSeriesId());
             ps.setString(9, book.getLocation());
+            ps.setBoolean(10, book.getActive() == null ? true : book.getActive());
             return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -43,7 +50,7 @@ public class BookDao {
 
     public int update(Book book) {
         String sql = "UPDATE Book SET Title = ?, Publisher = ?, Price = ?, Catalog = ?, " +
-                "CoverImage = ?, StockQuantity = ?, SeriesID = ?, Location = ? WHERE BookID = ?";
+                "CoverImage = ?, StockQuantity = ?, SeriesID = ?, Location = ?, IsActive = ? WHERE BookID = ?";
         Connection conn = null;
         PreparedStatement ps = null;
         try {
@@ -57,7 +64,8 @@ public class BookDao {
             ps.setObject(6, book.getStockQuantity());
             ps.setObject(7, book.getSeriesId());
             ps.setString(8, book.getLocation());
-            ps.setObject(9, book.getBookId());
+            ps.setBoolean(9, book.getActive() == null ? true : book.getActive());
+            ps.setObject(10, book.getBookId());
             return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -87,8 +95,7 @@ public class BookDao {
     }
 
     public Book findById(int bookId) {
-        String sql = "SELECT BookID, Title, Publisher, Price, Catalog, CoverImage, " +
-                "StockQuantity, SeriesID, Location FROM Book WHERE BookID = ?";
+        String sql = "SELECT " + BASE_COLUMNS + " FROM Book WHERE BookID = ?";
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -109,9 +116,35 @@ public class BookDao {
         }
     }
 
+    /**
+     * 前台使用：只查已上架的书
+     */
     public List<Book> findAll() {
-        String sql = "SELECT BookID, Title, Publisher, Price, Catalog, CoverImage, " +
-                "StockQuantity, SeriesID, Location FROM Book ORDER BY BookID";
+        String sql = "SELECT " + BASE_COLUMNS + " FROM Book WHERE " + ACTIVE_CONDITION + " ORDER BY BookID";
+        List<Book> list = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return list;
+    }
+
+    /**
+     * 后台列表：包含未上架
+     */
+    public List<Book> findAllIncludingInactive() {
+        String sql = "SELECT " + BASE_COLUMNS + " FROM Book ORDER BY BookID";
         List<Book> list = new ArrayList<>();
         Connection conn = null;
         PreparedStatement ps = null;
@@ -151,9 +184,32 @@ public class BookDao {
         return 0;
     }
 
+    /**
+     * 低库存（预警）书目数量：StockQuantity < threshold（NULL 按 0 处理）
+     */
+    public int countLowStock(int threshold) {
+        String sql = "SELECT COUNT(*) FROM Book WHERE COALESCE(StockQuantity, 0) < ?";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, threshold);
+            rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return 0;
+    }
+
     public List<Book> findByTitleLike(String keyword) {
-        String sql = "SELECT BookID, Title, Publisher, Price, Catalog, CoverImage, " +
-                "StockQuantity, SeriesID, Location FROM Book WHERE Title LIKE ? ORDER BY BookID";
+        String sql = "SELECT " + BASE_COLUMNS + " FROM Book WHERE Title LIKE ? AND " + ACTIVE_CONDITION + " ORDER BY BookID";
         List<Book> list = new ArrayList<>();
         Connection conn = null;
         PreparedStatement ps = null;
@@ -175,10 +231,9 @@ public class BookDao {
     }
 
     public List<Book> searchByTitleWithRank(String keyword) {
-        String sql = "SELECT BookID, Title, Publisher, Price, Catalog, CoverImage, " +
-                "StockQuantity, SeriesID, Location " +
+        String sql = "SELECT " + BASE_COLUMNS + " " +
                 "FROM Book " +
-                "WHERE Title LIKE CONCAT('%', ?, '%') " +
+                "WHERE " + ACTIVE_CONDITION + " AND Title LIKE CONCAT('%', ?, '%') " +
                 "ORDER BY CASE " +
                 "    WHEN Title = ? THEN 1 " +
                 "    WHEN Title LIKE CONCAT(?, '%') THEN 2 " +
@@ -213,12 +268,11 @@ public class BookDao {
      * 按关键字查询书目（通过 BookKeyword -> Keyword）
      */
     public List<Book> searchByKeyword(String keyword) {
-        String sql = "SELECT DISTINCT b.BookID, b.Title, b.Publisher, b.Price, b.Catalog, b.CoverImage, " +
-                "b.StockQuantity, b.SeriesID, b.Location " +
-                "FROM Book b " +
+        String sql = "SELECT DISTINCT " + BASE_COLUMNS_WITH_ALIAS +
+                " FROM Book b " +
                 "JOIN BookKeyword bk ON b.BookID = bk.BookID " +
                 "JOIN Keyword k ON bk.KeywordID = k.KeywordID " +
-                "WHERE k.Word LIKE ? " +
+                "WHERE " + activeCondition("b") + " AND k.Word LIKE ? " +
                 "ORDER BY b.BookID";
         List<Book> list = new ArrayList<>();
         Connection conn = null;
@@ -244,12 +298,11 @@ public class BookDao {
      * 按作者姓名查询书目（通过 BookAuthor -> Author），匹配任意作者（第一/第二作者等）
      */
     public List<Book> searchByAuthor(String authorName) {
-        String sql = "SELECT DISTINCT b.BookID, b.Title, b.Publisher, b.Price, b.Catalog, b.CoverImage, " +
-                "b.StockQuantity, b.SeriesID, b.Location " +
-                "FROM Book b " +
+        String sql = "SELECT DISTINCT " + BASE_COLUMNS_WITH_ALIAS +
+                " FROM Book b " +
                 "JOIN BookAuthor ba ON b.BookID = ba.BookID " +
                 "JOIN Author a ON ba.AuthorID = a.AuthorID " +
-                "WHERE a.Name LIKE ? " +
+                "WHERE " + activeCondition("b") + " AND a.Name LIKE ? " +
                 "ORDER BY b.BookID";
         List<Book> list = new ArrayList<>();
         Connection conn = null;
@@ -275,8 +328,7 @@ public class BookDao {
      * 按出版社查询书目
      */
     public List<Book> findByPublisher(String publisher) {
-        String sql = "SELECT BookID, Title, Publisher, Price, Catalog, CoverImage, " +
-                "StockQuantity, SeriesID, Location FROM Book WHERE Publisher LIKE ? ORDER BY BookID";
+        String sql = "SELECT " + BASE_COLUMNS + " FROM Book WHERE " + ACTIVE_CONDITION + " AND Publisher LIKE ? ORDER BY BookID";
         List<Book> list = new ArrayList<>();
         Connection conn = null;
         PreparedStatement ps = null;
@@ -316,6 +368,28 @@ public class BookDao {
         return keywords;
     }
 
+    /**
+     * 上下架状态切换
+     */
+    public int updateActiveStatus(int bookId, boolean active) {
+        String sql = "UPDATE Book SET IsActive = ? WHERE BookID = ?";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setBoolean(1, active);
+            ps.setInt(2, bookId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            DBUtil.closeQuietly(ps);
+            DBUtil.closeQuietly(conn);
+        }
+    }
+
     private Book mapRow(ResultSet rs) throws SQLException {
         Book book = new Book();
         book.setBookId((Integer) rs.getObject("BookID"));
@@ -327,7 +401,15 @@ public class BookDao {
         book.setStockQuantity((Integer) rs.getObject("StockQuantity"));
         book.setSeriesId((Integer) rs.getObject("SeriesID"));
         book.setLocation(rs.getString("Location"));
+        book.setActive((Boolean) rs.getObject("IsActive"));
         return book;
+    }
+
+    private String activeCondition(String alias) {
+        if (alias == null || alias.isEmpty()) {
+            return ACTIVE_CONDITION;
+        }
+        return "COALESCE(" + alias + ".IsActive, 1) = 1";
     }
 }
 

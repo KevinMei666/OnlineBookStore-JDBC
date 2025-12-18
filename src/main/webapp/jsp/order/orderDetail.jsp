@@ -26,11 +26,14 @@
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     BookDao bookDao = new BookDao();
     
-    String status = order.getStatus() != null ? order.getStatus() : "CREATED";
+    String statusRaw = order.getStatus() != null ? order.getStatus() : "CREATED";
+    String status = statusRaw != null ? statusRaw.trim() : "CREATED";
+    String statusUpper = status.toUpperCase();
     String statusBadgeClass = "";
     String statusText = "";
     
-    switch (status) {
+    switch (statusUpper) {
+        case "PENDING": // 兼容历史数据：Pending 视为已创建/待处理
         case "CREATED":
             statusBadgeClass = "bg-secondary";
             statusText = "已创建";
@@ -47,6 +50,9 @@
             statusBadgeClass = "bg-secondary";
             statusText = status;
     }
+
+    String currentRole = (String) session.getAttribute("currentRole");
+    boolean isAdmin = "ADMIN".equals(currentRole);
 %>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -172,7 +178,7 @@
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="bi bi-truck"></i> 发货记录</span>
-                        <% if (!"SHIPPED".equals(status)) { %>
+                        <% if (isAdmin && !"SHIPPED".equals(statusUpper)) { %>
                             <a href="${pageContext.request.contextPath}/shipment/list?orderId=<%= order.getOrderId() %>" 
                                class="btn btn-sm btn-success">
                                 <i class="bi bi-plus-circle"></i> 执行发货

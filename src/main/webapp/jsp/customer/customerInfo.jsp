@@ -109,28 +109,26 @@
                     </div>
                 </div>
                 
-                <!-- 功能操作区域 -->
+                <!-- 功能操作区域（客户端：仅支持充值，信用等级与透支额度只读展示） -->
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-gear"></i> 账户操作
                     </div>
                     <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
+                        <div class="row g-3 align-items-center justify-content-center">
+                            <div class="col-md-4 col-sm-6">
                                 <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addBalanceModal">
                                     <i class="bi bi-plus-circle"></i> 充值余额
                                 </button>
                             </div>
-                            <div class="col-md-4">
-                                <button type="button" class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#updateCreditLevelModal">
-                                    <i class="bi bi-star"></i> 调整信用等级
-                                </button>
-                            </div>
-                            <div class="col-md-4">
-                                <button type="button" class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#updateMonthlyLimitModal">
-                                    <i class="bi bi-credit-card"></i> 调整透支额度
-                                </button>
-                            </div>
+                        </div>
+                        <div class="mt-3 text-muted small text-center">
+                            <p class="mb-1">
+                                信用等级和透支额度由管理员根据您的消费与还款记录综合评估，您可以在本页查看当前等级与额度，但不能自行修改。
+                            </p>
+                            <p class="mb-0">
+                                如需调整，请联系系统管理员。
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -138,7 +136,7 @@
         </div>
     </div>
     
-    <!-- 充值余额模态框 -->
+    <!-- 充值余额模态框（客户端允许自助充值） -->
     <div class="modal fade" id="addBalanceModal" tabindex="-1" aria-labelledby="addBalanceModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -167,71 +165,7 @@
         </div>
     </div>
     
-    <!-- 调整信用等级模态框 -->
-    <div class="modal fade" id="updateCreditLevelModal" tabindex="-1" aria-labelledby="updateCreditLevelModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="updateCreditLevelModalLabel">
-                        <i class="bi bi-star"></i> 调整信用等级
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="${pageContext.request.contextPath}/customer/updateCredit" method="POST">
-                    <div class="modal-body">
-                        <input type="hidden" name="customerId" value="<%= customer.getCustomerId() %>">
-                        <input type="hidden" name="action" value="updateCreditLevel">
-                        <div class="mb-3">
-                            <label for="creditLevel" class="form-label">信用等级 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="creditLevel" name="creditLevel" required>
-                                <option value="1" <%= creditLevel == 1 ? "selected" : "" %>>1级（10%折扣，不可透支）</option>
-                                <option value="2" <%= creditLevel == 2 ? "selected" : "" %>>2级（15%折扣，不可透支）</option>
-                                <option value="3" <%= creditLevel == 3 ? "selected" : "" %>>3级（15%折扣，可透支，有额度限制）</option>
-                                <option value="4" <%= creditLevel == 4 ? "selected" : "" %>>4级（20%折扣，可透支，有额度限制）</option>
-                                <option value="5" <%= creditLevel == 5 ? "selected" : "" %>>5级（25%折扣，可透支，无额度限制）</option>
-                            </select>
-                            <small class="form-text text-muted">当前等级：<%= creditDesc %></small>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="submit" class="btn btn-warning">确认调整</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 调整透支额度模态框 -->
-    <div class="modal fade" id="updateMonthlyLimitModal" tabindex="-1" aria-labelledby="updateMonthlyLimitModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="updateMonthlyLimitModalLabel">
-                        <i class="bi bi-credit-card"></i> 调整透支额度
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="${pageContext.request.contextPath}/customer/updateCredit" method="POST">
-                    <div class="modal-body">
-                        <input type="hidden" name="customerId" value="<%= customer.getCustomerId() %>">
-                        <input type="hidden" name="action" value="updateMonthlyLimit">
-                        <div class="mb-3">
-                            <label for="monthlyLimit" class="form-label">透支额度 <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="monthlyLimit" name="monthlyLimit" 
-                                   step="0.01" min="0" required placeholder="请输入透支额度">
-                            <small class="form-text text-muted">当前透支额度：¥<%= customer.getMonthlyLimit() != null ? customer.getMonthlyLimit() : "0.00" %></small>
-                            <small class="form-text text-muted">注意：1-2级信用不可透支，3-4级信用有额度限制，5级信用无额度限制</small>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="submit" class="btn btn-info">确认调整</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- 客户端不再提供调整信用等级和透支额度的表单，只保留展示（上方账户信息卡片） -->
     
     <jsp:include page="/jsp/common/footer.jsp"/>
     

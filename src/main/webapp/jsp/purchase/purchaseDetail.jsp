@@ -28,13 +28,14 @@
     ShortageRecordDao shortageRecordDao = new ShortageRecordDao();
     
     String status = purchaseOrder.getStatus() != null ? purchaseOrder.getStatus() : "CREATED";
+    String statusNorm = status != null ? status.trim().toUpperCase() : "CREATED";
     String statusBadgeClass = "";
     String statusText = "";
     
-    if ("CREATED".equals(status)) {
+    if ("CREATED".equals(statusNorm)) {
         statusBadgeClass = "bg-warning";
         statusText = "已创建";
-    } else if ("COMPLETED".equals(status)) {
+    } else if ("COMPLETED".equals(statusNorm)) {
         statusBadgeClass = "bg-success";
         statusText = "已完成";
     } else {
@@ -79,7 +80,7 @@
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="bi bi-info-circle"></i> 采购单基本信息</span>
-                        <% if ("CREATED".equals(status)) { %>
+                        <% if ("CREATED".equals(statusNorm)) { %>
                             <form action="${pageContext.request.contextPath}/purchase/receive" method="POST" class="d-inline" 
                                   onsubmit="return confirm('确认执行到货操作吗？这将增加库存并更新采购单状态。')">
                                 <input type="hidden" name="poId" value="<%= purchaseOrder.getPoId() %>">

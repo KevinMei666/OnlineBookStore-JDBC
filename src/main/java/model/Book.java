@@ -13,6 +13,7 @@ public class Book {
     private byte[] coverImage;
     private Integer seriesId;
     private String location;
+    private Boolean active;
 
     public Book() {
     }
@@ -101,6 +102,14 @@ public class Book {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 }
 
