@@ -112,14 +112,17 @@
                                 %>
                                     <div class="col-md-6 col-lg-4">
                                         <div class="card h-100 shadow-sm">
-                                            <!-- 封面图片 -->
+                                            <!-- 封面图片：改为完整显示，保持比例 -->
                                             <% if (book.getCoverImage() != null && book.getCoverImage().length > 0) { %>
-                                                <img src="data:image/jpeg;base64,<%= java.util.Base64.getEncoder().encodeToString(book.getCoverImage()) %>" 
-                                                     class="card-img-top" alt="<%= book.getTitle() %>" 
-                                                     style="height: 200px; object-fit: cover;">
+                                                <div class="card-img-top bg-white d-flex align-items-center justify-content-center"
+                                                     style="height: 260px; overflow: hidden;">
+                                                    <img src="data:image/jpeg;base64,<%= java.util.Base64.getEncoder().encodeToString(book.getCoverImage()) %>"
+                                                         alt="<%= book.getTitle() %>"
+                                                         style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                                                </div>
                                             <% } else { %>
                                                 <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
-                                                     style="height: 200px;">
+                                                     style="height: 260px;">
                                                     <i class="bi bi-image" style="font-size: 48px; color: #ccc;"></i>
                                                 </div>
                                             <% } %>

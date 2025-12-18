@@ -75,7 +75,7 @@ public class ShipmentServlet extends HttpServlet {
     private void handleShipmentList(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
-        // 直接查询所有 OrderItem，然后计算待发货数量
+        // 查询状态为 PAID 或 SHIPPED 的订单及其订单项
         List<Map<String, Object>> pendingShipments = new ArrayList<>();
         
         Connection conn = null;
@@ -85,14 +85,15 @@ public class ShipmentServlet extends HttpServlet {
         try {
             conn = DBUtil.getConnection();
             
-            // 查询所有订单项及其已发货数量
-            String sql = "SELECT oi.OrderID, oi.BookID, oi.Quantity AS OrderQuantity, " +
+            // 查询状态为 PAID 或 SHIPPED 的订单项及其已发货数量
+            String sql = "SELECT o.OrderID, o.Status AS OrderStatus, oi.BookID, oi.Quantity AS OrderQuantity, " +
                     "COALESCE(SUM(s.Quantity), 0) AS ShippedQuantity " +
-                    "FROM OrderItem oi " +
+                    "FROM Orders o " +
+                    "INNER JOIN OrderItem oi ON o.OrderID = oi.OrderID " +
                     "LEFT JOIN Shipment s ON oi.OrderID = s.OrderID AND oi.BookID = s.BookID " +
-                    "GROUP BY oi.OrderID, oi.BookID, oi.Quantity " +
-                    "HAVING oi.Quantity > COALESCE(SUM(s.Quantity), 0) " +
-                    "ORDER BY oi.OrderID, oi.BookID";
+                    "WHERE o.Status IN ('PAID', 'SHIPPED', 'PARTIAL') " +
+                    "GROUP BY o.OrderID, o.Status, oi.BookID, oi.Quantity " +
+                    "ORDER BY o.OrderID DESC, oi.BookID";
             
             ps = conn.prepareStatement(sql);
             rs = ps.executeQuery();
@@ -100,12 +101,14 @@ public class ShipmentServlet extends HttpServlet {
             while (rs.next()) {
                 Map<String, Object> item = new HashMap<>();
                 int orderId = rs.getInt("OrderID");
+                String orderStatus = rs.getString("OrderStatus");
                 int bookId = rs.getInt("BookID");
                 int orderQuantity = rs.getInt("OrderQuantity");
                 int shippedQuantity = rs.getInt("ShippedQuantity");
                 int pendingQuantity = orderQuantity - shippedQuantity;
                 
                 item.put("orderId", orderId);
+                item.put("orderStatus", orderStatus);
                 item.put("bookId", bookId);
                 item.put("orderQuantity", orderQuantity);
                 item.put("shippedQuantity", shippedQuantity);

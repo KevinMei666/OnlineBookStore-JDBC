@@ -22,6 +22,9 @@
                         管理供应商基础信息（名称、联系方式、地址），为采购与供货关系维护提供支持。
                     </p>
                 </div>
+                <a href="${pageContext.request.contextPath}/admin/supplier/add" class="btn btn-success">
+                    <i class="bi bi-plus-lg"></i> 新增供应商
+                </a>
             </div>
 
             <form class="row g-3 mb-3" method="get"
@@ -69,9 +72,14 @@
                                     供货书目
                                 </a>
                                 <a href="${pageContext.request.contextPath}/admin/supplier/edit?id=${s.supplierId}"
-                                   class="btn btn-sm btn-outline-primary">
+                                   class="btn btn-sm btn-outline-primary me-1">
                                     编辑
                                 </a>
+                                <form action="${pageContext.request.contextPath}/admin/supplier/delete" method="post"
+                                      style="display:inline;" onsubmit="return confirm('确定删除该供应商吗？删除后无法恢复！');">
+                                    <input type="hidden" name="id" value="${s.supplierId}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                                </form>
                             </td>
                         </tr>
                     </c:forEach>

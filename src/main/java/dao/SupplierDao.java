@@ -127,6 +127,58 @@ public class SupplierDao {
         }
     }
 
+    /**
+     * 新增供应商
+     */
+    public int insert(Supplier supplier) {
+        String sql = "INSERT INTO Supplier (Name, Address, Phone, ContactEmail) VALUES (?, ?, ?, ?)";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
+            ps.setString(1, supplier.getName());
+            ps.setString(2, supplier.getAddress());
+            ps.setString(3, supplier.getPhone());
+            ps.setString(4, supplier.getContactEmail());
+            int rows = ps.executeUpdate();
+            if (rows > 0) {
+                rs = ps.getGeneratedKeys();
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+            return 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+    }
+
+    /**
+     * 删除供应商
+     */
+    public int deleteById(int supplierId) {
+        String sql = "DELETE FROM Supplier WHERE SupplierID = ?";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, supplierId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            DBUtil.closeQuietly(ps);
+            DBUtil.closeQuietly(conn);
+        }
+    }
+
     private Supplier mapRow(ResultSet rs) throws SQLException {
         Supplier supplier = new Supplier();
         supplier.setSupplierId((Integer) rs.getObject("SupplierID"));

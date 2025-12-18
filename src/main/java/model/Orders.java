@@ -11,6 +11,7 @@ public class Orders {
     private String shippingAddress;
     private String status;
     private BigDecimal totalAmount;
+    private Boolean confirmed; // 客户是否确认收货
 
     public Orders() {
     }
@@ -71,6 +72,14 @@ public class Orders {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public Boolean getConfirmed() {
+        return confirmed;
+    }
+
+    public void setConfirmed(Boolean confirmed) {
+        this.confirmed = confirmed;
     }
 }
 
