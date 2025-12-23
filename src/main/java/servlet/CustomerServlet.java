@@ -34,6 +34,9 @@ public class CustomerServlet extends HttpServlet {
         if (pathInfo == null || pathInfo.equals("/") || pathInfo.equals("/info") || pathInfo.equals("/wallet")) {
             // 显示客户信息
             handleCustomerInfo(request, response);
+        } else if (pathInfo.equals("/profile")) {
+            // 编辑个人资料
+            handleProfileEdit(request, response);
         } else if (pathInfo.equals("/orders")) {
             // 显示订单历史
             handleOrderHistory(request, response);
@@ -51,6 +54,9 @@ public class CustomerServlet extends HttpServlet {
         if (pathInfo.equals("/addBalance")) {
             // 充值余额
             handleAddBalance(request, response);
+        } else if (pathInfo.equals("/updateProfile")) {
+            // 更新个人资料
+            handleUpdateProfile(request, response);
         } else if (pathInfo.equals("/updateCredit")) {
             // 调整信用等级或透支额度
             handleUpdateCredit(request, response);
@@ -90,8 +96,46 @@ public class CustomerServlet extends HttpServlet {
             return;
         }
 
+        request.setAttribute("pageTitle", "用户中心");
+        request.setAttribute("pageIcon", "bi-person-square");
         request.setAttribute("customer", customer);
         request.getRequestDispatcher("/jsp/customer/customerInfo.jsp").forward(request, response);
+    }
+
+    /**
+     * 显示个人资料编辑页
+     */
+    private void handleProfileEdit(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        HttpSession session = request.getSession();
+
+        String currentRole = (String) session.getAttribute("currentRole");
+        if (!"CUSTOMER".equals(currentRole)) {
+            session.setAttribute("warningMessage", "请以客户身份登录后再操作");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+        if (customerId == null) {
+            session.setAttribute("warningMessage", "登录已失效，请重新登录后操作");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        Customer customer = customerDao.findById(customerId);
+        if (customer == null) {
+            session.setAttribute("errorMessage", "客户信息不存在");
+            response.sendRedirect(request.getContextPath() + "/");
+            return;
+        }
+
+        request.setAttribute("pageTitle", "用户中心");
+        request.setAttribute("pageIcon", "bi-person-square");
+        request.setAttribute("pageSubtitle", "修改个人信息");
+        request.setAttribute("customer", customer);
+        request.getRequestDispatcher("/jsp/customer/profileEdit.jsp").forward(request, response);
     }
     
     /**
@@ -170,6 +214,55 @@ public class CustomerServlet extends HttpServlet {
             session.setAttribute("errorMessage", "余额充值失败：" + e.getMessage());
             response.sendRedirect(request.getContextPath() + "/customer/info");
         }
+    }
+
+    /**
+     * 更新客户基本资料（姓名/邮箱/地址）
+     */
+    private void handleUpdateProfile(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        HttpSession session = request.getSession();
+        String currentRole = (String) session.getAttribute("currentRole");
+        if (!"CUSTOMER".equals(currentRole)) {
+            session.setAttribute("warningMessage", "请以客户身份登录后再操作");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+        if (customerId == null) {
+            session.setAttribute("warningMessage", "登录已失效，请重新登录后再试");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        String name = request.getParameter("name");
+        String email = request.getParameter("email");
+        String address = request.getParameter("address");
+
+        if (email == null || email.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "邮箱不能为空");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        int result = customerDao.updateBasicInfo(customerId,
+                name != null ? name.trim() : null,
+                email.trim(),
+                address != null ? address.trim() : null);
+
+        if (result > 0) {
+            // 刷新session中的当前用户显示名
+            Customer updated = customerDao.findById(customerId);
+            session.setAttribute("currentCustomer", updated);
+            session.setAttribute("currentUser", updated.getName() != null ? updated.getName() : updated.getEmail());
+            session.setAttribute("successMessage", "个人信息已更新");
+        } else {
+            session.setAttribute("errorMessage", "个人信息更新失败，请重试");
+        }
+
+        response.sendRedirect(request.getContextPath() + "/customer/profile");
     }
     
     /**

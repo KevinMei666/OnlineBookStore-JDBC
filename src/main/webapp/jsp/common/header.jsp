@@ -20,21 +20,21 @@
     String pageSubtitle = (String) request.getAttribute("pageSubtitle");
     String pageIcon = (String) request.getAttribute("pageIcon");
     if (pageTitle == null || pageTitle.isEmpty()) {
-        if (currentPath.contains("/book")) {
-            pageTitle = "书目查询";
-            pageIcon = "bi-book";
-        } else if (currentPath.contains("/order/cart")) {
-            pageTitle = "下单";
-            pageIcon = "bi-cart-plus";
-        } else if (currentPath.contains("/order")) {
-            pageTitle = "订单管理";
-            pageIcon = "bi-list-ul";
-        } else if (currentPath.contains("/customer")) {
-            pageTitle = "我的钱包";
-            pageIcon = "bi-wallet2";
-        } else if (currentPath.contains("/admin")) {
-            pageTitle = "后台管理";
-            pageIcon = "bi-speedometer2";
+        if (currentPath.contains("/admin/supplier")) {
+            pageTitle = "供应商管理";
+            pageIcon = "bi-building";
+        } else if (currentPath.contains("/admin/customer")) {
+            pageTitle = "客户管理";
+            pageIcon = "bi-people";
+        } else if (currentPath.contains("/admin/inventory")) {
+            pageTitle = "库存管理";
+            pageIcon = "bi-box-seam";
+        } else if (currentPath.contains("/admin/book")) {
+            pageTitle = "图书管理";
+            pageIcon = "bi-journal-bookmark";
+        } else if (currentPath.contains("/purchase/shortage")) {
+            pageTitle = "缺书记录";
+            pageIcon = "bi-exclamation-triangle";
         } else if (currentPath.contains("/purchase")) {
             pageTitle = "采购管理";
             pageIcon = "bi-box-seam";
@@ -47,6 +47,21 @@
         } else if (currentPath.contains("/finance")) {
             pageTitle = "财务统计";
             pageIcon = "bi-cash-stack";
+        } else if (currentPath.contains("/admin")) {
+            pageTitle = "后台管理";
+            pageIcon = "bi-speedometer2";
+        } else if (currentPath.contains("/order/cart")) {
+            pageTitle = "下单";
+            pageIcon = "bi-cart-plus";
+        } else if (currentPath.contains("/order")) {
+            pageTitle = "订单管理";
+            pageIcon = "bi-list-ul";
+        } else if (currentPath.contains("/book")) {
+            pageTitle = "书目查询";
+            pageIcon = "bi-search";
+        } else if (currentPath.contains("/customer")) {
+            pageTitle = "用户中心";
+            pageIcon = "bi-person-square";
         } else {
             pageTitle = "首页";
             pageIcon = "bi-house-door";
@@ -107,7 +122,7 @@
                 <li>
                     <a class="sidebar-link <%= currentPath.contains("/customer") ? "active" : "" %>"
                            href="${pageContext.request.contextPath}/customer/info">
-                            <i class="bi bi-wallet2"></i> 我的钱包
+                            <i class="bi bi-person-square"></i> 用户中心
                         </a>
                     </li>
             </ul>

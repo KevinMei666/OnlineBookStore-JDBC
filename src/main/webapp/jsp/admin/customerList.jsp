@@ -22,6 +22,11 @@
                         管理客户余额与信用等级，为订单与发货业务提供信用支持。
                     </p>
                 </div>
+                        <div>
+                            <a class="btn btn-primary" href="${pageContext.request.contextPath}/admin/customer/create">
+                                <i class="bi bi-person-plus"></i> 新增客户
+                            </a>
+                        </div>
             </div>
 
             <form class="row g-3 mb-3" method="get"

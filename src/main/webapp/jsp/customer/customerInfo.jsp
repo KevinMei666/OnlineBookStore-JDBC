@@ -117,6 +117,11 @@
                                     <i class="bi bi-plus-circle"></i> 充值余额
                                 </button>
                             </div>
+                            <div class="col-md-4 col-sm-6">
+                                <a class="btn btn-outline-secondary w-100" href="${pageContext.request.contextPath}/customer/profile">
+                                    <i class="bi bi-pencil-square"></i> 修改个人信息
+                                </a>
+                            </div>
                         </div>
                         <div class="mt-3 text-muted small text-center">
                             <p class="mb-1">

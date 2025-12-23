@@ -274,6 +274,30 @@ public class CustomerDao {
     }
 
     /**
+     * 客户端：更新姓名、邮箱、地址
+     */
+    public int updateBasicInfo(int customerId, String name, String email, String address) {
+        String sql = "UPDATE Customer SET Name = ?, Email = ?, Address = ? WHERE CustomerID = ?";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, address);
+            ps.setInt(4, customerId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            DBUtil.closeQuietly(ps);
+            DBUtil.closeQuietly(conn);
+        }
+    }
+
+    /**
      * 管理员端一次性更新客户余额、信用等级与月度透支额度
      */
     public int updateAccountAndCredit(int customerId, BigDecimal balance,
