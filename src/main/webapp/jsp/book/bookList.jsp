@@ -9,6 +9,8 @@
     List<Book> books = (List<Book>) request.getAttribute("books");
     String searchType = (String) request.getAttribute("searchType");
     String searchKeyword = (String) request.getAttribute("searchKeyword");
+    String currentRole = (String) session.getAttribute("currentRole");
+    boolean isAdmin = "ADMIN".equals(currentRole);
     
     if (books == null) {
         books = new java.util.ArrayList<>();
@@ -123,7 +125,7 @@
                                                 </div>
                                             <% } %>
                                             
-                                            <div class="card-body d-flex flex-column">
+                                                    <div class="card-body d-flex flex-column">
                                                 <!-- 书名 -->
                                                 <h5 class="card-title">
                                                     <a href="${pageContext.request.contextPath}/book/detail?bookId=<%= book.getBookId() %>" 
@@ -176,6 +178,12 @@
                                                        class="btn btn-sm btn-outline-primary w-100 mb-2">
                                                         <i class="bi bi-eye"></i> 查看详情
                                                     </a>
+                                                    <% if (isAdmin) { %>
+                                                        <a href="${pageContext.request.contextPath}/admin/book/edit?bookId=<%= book.getBookId() %>"
+                                                           class="btn btn-sm btn-warning w-100">
+                                                            <i class="bi bi-pencil-square"></i> 管理
+                                                        </a>
+                                                    <% } else { %>
                                                     <form action="${pageContext.request.contextPath}/book" method="POST" class="d-inline w-100">
                                                         <input type="hidden" name="action" value="addToCart">
                                                         <input type="hidden" name="bookId" value="<%= book.getBookId() %>">
@@ -183,6 +191,7 @@
                                                             <i class="bi bi-cart-plus"></i> 加入购物车
                                                         </button>
                                                     </form>
+                                                    <% } %>
                                                 </div>
                                             </div>
                                         </div>

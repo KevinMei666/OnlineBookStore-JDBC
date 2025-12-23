@@ -30,7 +30,7 @@
                 <span class="badge bg-light text-primary border-0">欢迎使用</span>
                 <span class="text-muted small">网上书店管理系统</span>
             </div>
-            <h1 class="mb-2 fw-bold">一站式书店运营与实验平台</h1>
+            <h1 class="mb-2 fw-bold">一站式书店管理订购系统</h1>
             <p class="text-muted mb-3 small">
                 覆盖查书、下单、库存采购、物流发货与财务统计，既适合教学演示，也适合日常运营。
             </p>

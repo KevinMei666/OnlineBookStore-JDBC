@@ -82,12 +82,14 @@
                         </a>
                     </li>
                     <% if (loggedIn) { %>
+                    <% if (!isAdmin) { %>
                 <li>
                     <a class="sidebar-link <%= currentPath.contains("/order/cart") ? "active" : "" %>"
                                href="${pageContext.request.contextPath}/order/cart">
                                 <i class="bi bi-cart-plus"></i> 下单
                             </a>
                         </li>
+                    <% } %>
                 <li>
                     <a class="sidebar-link <%= (currentPath.contains("/order") && !currentPath.contains("/order/cart")) ? "active" : "" %>"
                                href="${pageContext.request.contextPath}/order/list">
@@ -179,7 +181,7 @@
                 <i class="bi bi-database"></i>
                 <span>数据库状态：<span class="text-success">已连接</span></span>
             </div>
-            <div class="small text-muted mt-1">© 2024 网上书店管理系统</div>
+            <div class="small text-muted mt-1">© 2025 网上书店管理系统</div>
         </div>
     </aside>
                 
