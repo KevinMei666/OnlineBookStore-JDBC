@@ -349,7 +349,8 @@ public class OrdersDao {
     }
 
     public List<Orders> findByCustomerId(int customerId) {
-        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status, Confirmed " +
+        // 不依赖 Confirmed 列，兼容历史数据表结构
+        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status " +
                 "FROM Orders WHERE CustomerID = ? ORDER BY OrderID DESC";
         List<Orders> list = new ArrayList<>();
         Connection conn = null;
@@ -375,7 +376,8 @@ public class OrdersDao {
      * 管理员查看所有订单
      */
     public List<Orders> findAll() {
-        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status, Confirmed " +
+        // 不依赖 Confirmed 列，兼容历史数据表结构
+        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status " +
                 "FROM Orders ORDER BY OrderID DESC";
         List<Orders> list = new ArrayList<>();
         Connection conn = null;
@@ -451,14 +453,8 @@ public class OrdersDao {
         order.setShippingAddress(rs.getString("ShippingAddress"));
         order.setTotalAmount(rs.getBigDecimal("TotalAmount"));
         order.setStatus(rs.getString("Status"));
-        try {
-            order.setConfirmed(rs.getBoolean("Confirmed"));
-            if (rs.wasNull()) {
-                order.setConfirmed(false);
-            }
-        } catch (SQLException e) {
-            order.setConfirmed(false);
-        }
+        // Confirmed 字段在旧库中不存在，安全降级为 false
+        order.setConfirmed(false);
         return order;
     }
 
