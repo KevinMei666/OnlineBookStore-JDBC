@@ -48,13 +48,9 @@
     <jsp:include page="/jsp/common/header.jsp"/>
     <jsp:include page="/jsp/common/message.jsp"/>
     
-    <div class="container mt-4 mb-5">
+    <div class="container mt-3 mb-5">
         <div class="row">
             <div class="col-12">
-                <h2 class="mb-4">
-                    <i class="bi bi-list-ul"></i> 订单管理
-                </h2>
-                
                 <!-- 状态筛选：仅管理员显示，客户直接查看自己的全部订单 -->
                 <% if (isAdmin) { %>
                 <div class="card mb-4">

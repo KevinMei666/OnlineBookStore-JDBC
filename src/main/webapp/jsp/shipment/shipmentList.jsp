@@ -30,13 +30,9 @@
     <jsp:include page="/jsp/common/header.jsp"/>
     <jsp:include page="/jsp/common/message.jsp"/>
     
-    <div class="container mt-4 mb-5">
+    <div class="container mt-3 mb-5">
         <div class="row">
             <div class="col-12">
-                <h2 class="mb-4">
-                    <i class="bi bi-truck"></i> 物流管理
-                </h2>
-                
                 <!-- 物流管理订单列表 -->
                 <div class="card">
                     <div class="card-header">

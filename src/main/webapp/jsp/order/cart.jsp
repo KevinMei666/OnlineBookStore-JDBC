@@ -39,13 +39,9 @@
     <jsp:include page="/jsp/common/header.jsp"/>
     <jsp:include page="/jsp/common/message.jsp"/>
     
-    <div class="container mt-4 mb-5">
+    <div class="container mt-3 mb-5">
         <div class="row">
             <div class="col-12">
-                <h2 class="mb-4">
-                    <i class="bi bi-cart"></i> 购物车
-                </h2>
-                
                 <% if (cart.isEmpty()) { %>
                     <div class="card">
                         <div class="card-body text-center py-5">

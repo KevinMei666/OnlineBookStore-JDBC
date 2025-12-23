@@ -95,13 +95,9 @@
     <jsp:include page="/jsp/common/header.jsp"/>
     <jsp:include page="/jsp/common/message.jsp"/>
     
-    <div class="container mt-4 mb-5">
+    <div class="container mt-3 mb-5">
         <div class="row">
             <div class="col-12">
-                <h2 class="mb-4">
-                    <i class="bi bi-bag-check"></i> 订单确认
-                </h2>
-                
                 <form action="${pageContext.request.contextPath}/order/create" method="POST">
                     <div class="row">
                         <!-- 左侧：订单信息 -->

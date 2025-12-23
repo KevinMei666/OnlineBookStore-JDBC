@@ -42,10 +42,6 @@
     <div class="container mt-4">
         <div class="row">
             <div class="col-12">
-                <h2 class="mb-4">
-                    <i class="bi bi-book"></i> 书目查询
-                </h2>
-                
                 <!-- 搜索区域 -->
                 <div class="card mb-4 search-card border-0">
                     <div class="card-header">

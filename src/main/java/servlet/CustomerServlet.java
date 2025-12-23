@@ -31,7 +31,7 @@ public class CustomerServlet extends HttpServlet {
         
         String pathInfo = request.getPathInfo();
         
-        if (pathInfo == null || pathInfo.equals("/") || pathInfo.equals("/info")) {
+        if (pathInfo == null || pathInfo.equals("/") || pathInfo.equals("/info") || pathInfo.equals("/wallet")) {
             // 显示客户信息
             handleCustomerInfo(request, response);
         } else if (pathInfo.equals("/orders")) {

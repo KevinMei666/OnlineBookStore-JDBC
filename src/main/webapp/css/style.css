@@ -157,13 +157,27 @@ body {
     height: 62px;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start !important; /* 强制左对齐，避免旧样式覆盖 */
+    gap: 16px;
     padding: 0 22px;
     background: #fff;
     border-bottom: 1px solid #e5e9f2;
     position: sticky;
     top: 0;
     z-index: 10;
+}
+
+.topbar-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .user-chip {
@@ -178,7 +192,7 @@ body {
 }
 
 .app-content {
-    padding: 24px 22px 30px;
+    padding: 16px 22px 30px;
 }
 
 /* 卡片样式 */

@@ -51,10 +51,6 @@
     <div class="container mt-4 mb-5">
         <div class="row">
             <div class="col-12">
-                <h2 class="mb-4">
-                    <i class="bi bi-person"></i> 客户信息
-                </h2>
-                
                 <div class="row">
                     <!-- 基本信息 -->
                     <div class="col-md-6">
