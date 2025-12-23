@@ -39,7 +39,7 @@
     <jsp:include page="/jsp/common/header.jsp"/>
     <jsp:include page="/jsp/common/message.jsp"/>
     
-    <div class="container-fluid mt-4">
+    <div class="container mt-4 mb-5">
         <div class="row">
             <div class="col-12">
                 <h2 class="mb-4">
@@ -130,9 +130,9 @@
                             <!-- 底部汇总 -->
                             <div class="row mt-4">
                                 <div class="col-md-6">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h5 class="card-title">购物车统计</h5>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">购物车统计</h5>
                                             <p class="mb-1">
                                                 <strong>商品总数：</strong> 
                                                 <span class="badge bg-primary"><%= totalQuantity %> 本</span>

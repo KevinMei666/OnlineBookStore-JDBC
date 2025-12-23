@@ -1,5 +1,14 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%
+    String landingRedirect = null;
+    Object userObj = session.getAttribute("currentUser");
+    if (userObj == null || "".equals(userObj)) {
+        landingRedirect = request.getContextPath() + "/landing.jsp";
+        response.sendRedirect(landingRedirect);
+        return;
+    }
+%>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>

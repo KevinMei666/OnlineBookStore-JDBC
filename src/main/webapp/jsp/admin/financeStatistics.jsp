@@ -41,7 +41,7 @@
     <jsp:include page="/jsp/common/header.jsp"/>
     <jsp:include page="/jsp/common/message.jsp"/>
     
-    <div class="container-fluid mt-4">
+    <div class="container mt-4 mb-5">
         <div class="row">
             <div class="col-12">
                 <h2 class="mb-4">

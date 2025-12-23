@@ -11,8 +11,8 @@ public final class DBUtil {
 
     private static final String JDBC_URL =
             "jdbc:mysql://localhost:3306/OnlineBookStore?useSSL=false&serverTimezone=Asia/Shanghai";
-    private static final String JDBC_USER = "root";
-    private static final String JDBC_PASSWORD = "666666";
+    private static final String JDBC_USER = "Hydralune";
+    private static final String JDBC_PASSWORD = "54idt@Mysql";
 
     static {
         try {
