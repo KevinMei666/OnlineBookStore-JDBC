@@ -39,7 +39,7 @@
     <jsp:include page="/jsp/common/header.jsp"/>
     <jsp:include page="/jsp/common/message.jsp"/>
     
-    <div class="container-fluid mt-4">
+    <div class="container mt-4">
         <div class="row">
             <div class="col-12">
                 <h2 class="mb-4">
@@ -47,7 +47,7 @@
                 </h2>
                 
                 <!-- 搜索区域 -->
-                <div class="card mb-4">
+                <div class="card mb-4 search-card border-0">
                     <div class="card-header">
                         <i class="bi bi-search"></i> 搜索条件
                     </div>
@@ -94,7 +94,7 @@
                 </div>
                 
                 <!-- 书籍列表区域 -->
-                <div class="card">
+                <div class="card result-card border-0">
                     <div class="card-header">
                         <i class="bi bi-list-ul"></i> 查询结果 
                         <span class="badge bg-primary"><%= books.size() %> 本</span>
@@ -111,7 +111,7 @@
                                     List<Keyword> keywords = bookDao.findKeywordsByBookId(book.getBookId());
                                 %>
                                     <div class="col-md-6 col-lg-4">
-                                        <div class="card h-100 shadow-sm">
+                                        <div class="card h-100 shadow-sm border-0 book-card">
                                             <!-- 封面图片：改为完整显示，保持比例 -->
                                             <% if (book.getCoverImage() != null && book.getCoverImage().length > 0) { %>
                                                 <div class="card-img-top bg-white d-flex align-items-center justify-content-center"

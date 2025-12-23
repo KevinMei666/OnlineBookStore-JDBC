@@ -21,10 +21,15 @@
                     <h2 class="h5 mb-1">图书上架/下架</h2>
                     <p class="text-muted small mb-0">仅影响前台可见性，不删除库存与历史记录。</p>
                 </div>
+                <div>
+                    <a class="btn btn-primary btn-sm" href="${pageContext.request.contextPath}/admin/book/create">
+                        <i class="bi bi-plus-circle"></i> 新增图书
+                    </a>
+                </div>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-striped table-hover table-bordered align-middle">
+                <table class="table table-striped table-hover table-bordered align-middle table-modern">
                     <thead class="table-light">
                     <tr>
                         <th scope="col">书号</th>

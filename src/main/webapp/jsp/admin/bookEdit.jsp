@@ -19,7 +19,7 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <h2 class="h5 mb-1">编辑图书</h2>
+                    <h2 class="h5 mb-1">${isNew ? "新增图书" : "编辑图书"}</h2>
                     <p class="text-muted small mb-0">下架状态也可编辑，保存后可选择重新上架。</p>
                 </div>
                 <a href="${pageContext.request.contextPath}/admin/book/list" class="btn btn-outline-secondary btn-sm">
@@ -34,7 +34,9 @@
             <c:if test="${not empty book}">
                 <form class="row g-3" method="post" action="${pageContext.request.contextPath}/admin/book/save"
                       enctype="multipart/form-data">
-                    <input type="hidden" name="bookId" value="${book.bookId}">
+                    <c:if test="${not isNew}">
+                        <input type="hidden" name="bookId" value="${book.bookId}">
+                    </c:if>
 
                     <div class="col-md-6">
                         <label class="form-label">书名</label>
@@ -77,7 +79,7 @@
                     <div class="col-md-6">
                         <label class="form-label">封面上传（jpg/png，小于5MB）</label>
                         <input type="file" class="form-control" name="coverImage" accept="image/*">
-                        <small class="text-muted">若不选择文件则保持原封面。</small>
+                        <small class="text-muted">${isNew ? "可选，支持后续编辑补充。" : "若不选择文件则保持原封面。"}</small>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">当前封面</label>
@@ -107,7 +109,7 @@
 
                     <div class="col-12">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> 保存
+                            <i class="bi bi-save"></i> ${isNew ? "创建" : "保存"}
                         </button>
                         <a href="${pageContext.request.contextPath}/admin/book/list" class="btn btn-outline-secondary ms-2">
                             取消

@@ -92,7 +92,7 @@
                             </div>
                         <% } else { %>
                             <div class="table-responsive">
-                                <table class="table table-hover table-striped">
+                                <table class="table table-hover table-striped table-modern">
                                     <thead>
                                         <tr>
                                             <th width="10%">订单ID</th>

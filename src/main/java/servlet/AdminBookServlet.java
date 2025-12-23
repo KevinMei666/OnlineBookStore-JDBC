@@ -33,6 +33,8 @@ public class AdminBookServlet extends HttpServlet {
         String path = request.getPathInfo();
         if (path == null || "/".equals(path) || "/list".equalsIgnoreCase(path)) {
             handleList(request, response);
+        } else if ("/create".equalsIgnoreCase(path)) {
+            handleCreate(request, response);
         } else if ("/edit".equalsIgnoreCase(path)) {
             handleEdit(request, response);
         } else {
@@ -62,9 +64,10 @@ public class AdminBookServlet extends HttpServlet {
     private void handleEdit(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String bookIdStr = request.getParameter("bookId");
         if (bookIdStr == null || bookIdStr.trim().isEmpty()) {
-            request.getSession().setAttribute("errorMessage", "书号不能为空");
-            response.sendRedirect(request.getContextPath() + "/admin/book/list");
-            return;
+            request.setAttribute("book", new Book());
+            request.setAttribute("isNew", true);
+            request.getRequestDispatcher("/jsp/admin/bookEdit.jsp").forward(request, response);
+            return; // 兼容缺少bookId时也能进入新增
         }
         try {
             int bookId = Integer.parseInt(bookIdStr);
@@ -82,24 +85,34 @@ public class AdminBookServlet extends HttpServlet {
         }
     }
 
+    private void handleCreate(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // 提供空白实体，沿用同一表单
+        Book book = new Book();
+        book.setActive(true);
+        request.setAttribute("book", book);
+        request.setAttribute("isNew", true);
+        request.getRequestDispatcher("/jsp/admin/bookEdit.jsp").forward(request, response);
+    }
+
     private void handleSave(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         String bookIdStr = request.getParameter("bookId");
-        if (bookIdStr == null || bookIdStr.trim().isEmpty()) {
-            request.getSession().setAttribute("errorMessage", "书号不能为空");
-            response.sendRedirect(request.getContextPath() + "/admin/book/list");
-            return;
-        }
-
+        boolean creating = (bookIdStr == null || bookIdStr.trim().isEmpty());
         try {
-            int bookId = Integer.parseInt(bookIdStr);
-            Book book = bookDao.findById(bookId);
-            if (book == null) {
-                request.getSession().setAttribute("errorMessage", "未找到该书籍");
-                response.sendRedirect(request.getContextPath() + "/admin/book/list");
-                return;
+            Book book;
+            if (creating) {
+                book = new Book();
+            } else {
+                int bookId = Integer.parseInt(bookIdStr);
+                book = bookDao.findById(bookId);
+                if (book == null) {
+                    request.getSession().setAttribute("errorMessage", "未找到该书籍");
+                    response.sendRedirect(request.getContextPath() + "/admin/book/list");
+                    return;
+                }
+                book.setBookId(bookId);
             }
 
-            // 基础字段更新，允许下架状态下修改
+            // 基础字段
             book.setTitle(request.getParameter("title"));
             book.setPublisher(request.getParameter("publisher"));
             book.setCatalog(request.getParameter("catalog"));
@@ -108,10 +121,14 @@ public class AdminBookServlet extends HttpServlet {
             String priceStr = request.getParameter("price");
             if (priceStr != null && !priceStr.trim().isEmpty()) {
                 book.setPrice(new BigDecimal(priceStr.trim()));
+            } else {
+                book.setPrice(null);
             }
             String stockStr = request.getParameter("stockQuantity");
             if (stockStr != null && !stockStr.trim().isEmpty()) {
                 book.setStockQuantity(Integer.parseInt(stockStr.trim()));
+            } else {
+                book.setStockQuantity(null);
             }
 
             // 上下架状态
@@ -124,13 +141,27 @@ public class AdminBookServlet extends HttpServlet {
             if (coverPart != null && coverPart.getSize() > 0) {
                 byte[] data = readAllBytes(coverPart.getInputStream(), (int) coverPart.getSize());
                 book.setCoverImage(data);
+            } else if (creating) {
+                book.setCoverImage(null);
             }
 
-            int updated = bookDao.update(book);
-            if (updated > 0) {
-                request.getSession().setAttribute("successMessage", "书籍信息已保存");
+            int affected;
+            if (creating) {
+                // BookID 为空由数据库自增
+                book.setBookId(null);
+                affected = bookDao.insert(book);
+                if (affected > 0) {
+                    request.getSession().setAttribute("successMessage", "新图书已创建");
+                } else {
+                    request.getSession().setAttribute("errorMessage", "创建失败，请重试");
+                }
             } else {
-                request.getSession().setAttribute("errorMessage", "保存失败，请重试");
+                affected = bookDao.update(book);
+                if (affected > 0) {
+                    request.getSession().setAttribute("successMessage", "书籍信息已保存");
+                } else {
+                    request.getSession().setAttribute("errorMessage", "保存失败，请重试");
+                }
             }
             response.sendRedirect(request.getContextPath() + "/admin/book/list");
         } catch (NumberFormatException e) {

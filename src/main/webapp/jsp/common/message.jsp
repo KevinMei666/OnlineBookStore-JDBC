@@ -33,75 +33,91 @@
         }
     }
 %>
-<!-- 消息提示区域 -->
-<div id="message-container-page" class="container-fluid mt-3">
+<!-- 顶部右侧消息浮层（全局可见） -->
+<div id="toast-container-page" class="toast-container position-fixed top-0 end-0 p-3 message-toast-container" aria-live="polite" aria-atomic="true">
     <c:if test="${not empty successMessage}">
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle-fill"></i> ${successMessage}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-success border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4500">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-check-circle-fill"></i>
+                <div class="toast-body">${successMessage}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     </c:if>
-    
     <c:if test="${not empty errorMessage}">
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i> ${errorMessage}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-danger border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div class="toast-body">${errorMessage}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     </c:if>
-    
     <c:if test="${not empty warningMessage}">
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle-fill"></i> ${warningMessage}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-warning border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5500">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <div class="toast-body">${warningMessage}</div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     </c:if>
-    
     <c:if test="${not empty infoMessage}">
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <i class="bi bi-info-circle-fill"></i> ${infoMessage}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-info border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4500">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-info-circle-fill"></i>
+                <div class="toast-body">${infoMessage}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     </c:if>
-    
-    <%-- 使用JSP脚本显示消息（兼容性更好） --%>
+
     <% if (successMsg != null && !successMsg.isEmpty()) { %>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle-fill"></i> <%= successMsg %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-success border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4500">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-check-circle-fill"></i>
+                <div class="toast-body"><%= successMsg %></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     <% } %>
-    
     <% if (errorMsg != null && !errorMsg.isEmpty()) { %>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i> <%= errorMsg %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-danger border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div class="toast-body"><%= errorMsg %></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     <% } %>
-    
     <% if (warningMsg != null && !warningMsg.isEmpty()) { %>
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle-fill"></i> <%= warningMsg %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-warning border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5500">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <div class="toast-body"><%= warningMsg %></div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     <% } %>
-    
     <% if (infoMsg != null && !infoMsg.isEmpty()) { %>
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <i class="bi bi-info-circle-fill"></i> <%= infoMsg %>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="toast align-items-center toast-info border-0 shadow-sm" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4500">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-info-circle-fill"></i>
+                <div class="toast-body"><%= infoMsg %></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     <% } %>
 </div>
 
 <script>
-    // 自动隐藏消息（5秒后）
     document.addEventListener('DOMContentLoaded', function() {
-        const alerts = document.querySelectorAll('#message-container-page .alert');
-        alerts.forEach(function(alert) {
-            setTimeout(function() {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            }, 5000);
+        const container = document.getElementById('toast-container-page');
+        if (!container) return;
+        const toasts = container.querySelectorAll('.toast');
+        toasts.forEach(function(toastEl) {
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
         });
     });
 </script>
