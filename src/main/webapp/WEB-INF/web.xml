@@ -116,6 +116,10 @@
         <filter-name>AuthFilter</filter-name>
         <url-pattern>/report/*</url-pattern>
     </filter-mapping>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/finance/*</url-pattern>
+    </filter-mapping>
 
     <!-- 预留：报表与管理后台 -->
     <!-- ReportServlet: /report/* -->
@@ -188,6 +192,16 @@
     <servlet-mapping>
         <servlet-name>AdminSupplierServlet</servlet-name>
         <url-pattern>/admin/supplier/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- 管理员端：财务统计 -->
+    <servlet>
+        <servlet-name>FinanceServlet</servlet-name>
+        <servlet-class>servlet.FinanceServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>FinanceServlet</servlet-name>
+        <url-pattern>/finance/*</url-pattern>
     </servlet-mapping>
 
 </web-app>

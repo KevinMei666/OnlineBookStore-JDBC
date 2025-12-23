@@ -104,9 +104,21 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/shipment") ? "active" : "" %>"
+                               href="${pageContext.request.contextPath}/shipment/list">
+                                <i class="bi bi-truck"></i> 物流管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link <%= currentPath.contains("/report") ? "active" : "" %>" 
                                href="${pageContext.request.contextPath}/report/views">
                                 <i class="bi bi-bar-chart"></i> 统计报表
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= currentPath.contains("/finance") ? "active" : "" %>" 
+                               href="${pageContext.request.contextPath}/finance/statistics">
+                                <i class="bi bi-cash-stack"></i> 财务统计
                             </a>
                         </li>
                     <% } %>

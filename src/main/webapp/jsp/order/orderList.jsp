@@ -57,26 +57,26 @@
                 
                 <!-- 状态筛选：仅管理员显示，客户直接查看自己的全部订单 -->
                 <% if (isAdmin) { %>
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <form action="${pageContext.request.contextPath}/order/list" method="GET" class="d-flex gap-2 align-items-end">
-                                <div class="flex-grow-1">
-                                    <label for="status" class="form-label">按状态筛选</label>
-                                    <select class="form-select" id="status" name="status" onchange="this.form.submit()">
-                                        <option value="">全部订单</option>
-                                        <option value="CREATED" <%= "CREATED".equals(filterStatus) ? "selected" : "" %>>已创建</option>
-                                        <option value="PARTIAL" <%= "PARTIAL".equals(filterStatus) ? "selected" : "" %>>部分发货</option>
-                                        <option value="SHIPPED" <%= "SHIPPED".equals(filterStatus) ? "selected" : "" %>>已发货</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <a href="${pageContext.request.contextPath}/order/list" class="btn btn-outline-secondary">
-                                        <i class="bi bi-arrow-clockwise"></i> 重置
-                                    </a>
-                                </div>
-                            </form>
-                        </div>
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form action="${pageContext.request.contextPath}/order/list" method="GET" class="d-flex gap-2 align-items-end">
+                            <div class="flex-grow-1">
+                                <label for="status" class="form-label">按状态筛选</label>
+                                <select class="form-select" id="status" name="status" onchange="this.form.submit()">
+                                    <option value="">全部订单</option>
+                                    <option value="CREATED" <%= "CREATED".equals(filterStatus) ? "selected" : "" %>>已创建</option>
+                                    <option value="PARTIAL" <%= "PARTIAL".equals(filterStatus) ? "selected" : "" %>>部分发货</option>
+                                    <option value="SHIPPED" <%= "SHIPPED".equals(filterStatus) ? "selected" : "" %>>已发货</option>
+                                </select>
+                            </div>
+                            <div>
+                                <a href="${pageContext.request.contextPath}/order/list" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-clockwise"></i> 重置
+                                </a>
+                            </div>
+                        </form>
                     </div>
+                </div>
                 <% } %>
                 
                 <!-- 订单列表 -->
@@ -100,9 +100,10 @@
                                                 <th width="15%">下单客户</th>
                                             <% } %>
                                             <th width="20%">下单时间</th>
-                                            <th width="15%">订单状态</th>
-                                            <th width="15%">总金额</th>
-                                            <th width="35%">操作</th>
+                                            <th width="12%">订单状态</th>
+                                            <th width="10%">收货状态</th>
+                                            <th width="13%">总金额</th>
+                                            <th width="30%">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -118,6 +119,10 @@
                                                 case "CREATED":
                                                     statusBadgeClass = "bg-secondary";
                                                     statusText = "已创建";
+                                                    break;
+                                                case "PAID":
+                                                    statusBadgeClass = "bg-info";
+                                                    statusText = "已支付";
                                                     break;
                                                 case "PARTIAL":
                                                     statusBadgeClass = "bg-warning";
@@ -160,6 +165,17 @@
                                                         <%= statusText %>
                                                     </span>
                                                 </td>
+                                                <td>
+                                                    <%
+                                                        Boolean confirmed = order.getConfirmed();
+                                                        boolean isConfirmed = confirmed != null && confirmed;
+                                                    %>
+                                                    <% if (isConfirmed) { %>
+                                                        <span class="badge bg-success">已收货</span>
+                                                    <% } else { %>
+                                                        <span class="badge bg-secondary">未确认</span>
+                                                    <% } %>
+                                                </td>
                                                 <td class="text-danger fw-bold">
                                                     ¥<%= order.getTotalAmount() != null ? order.getTotalAmount() : "0.00" %>
                                                 </td>
@@ -168,10 +184,24 @@
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class="bi bi-eye"></i> 查看详情
                                                     </a>
-                                                    <% if (isAdmin && !"SHIPPED".equals(statusUpper)) { %>
+                                                    <% if (isAdmin && ("PAID".equals(statusUpper) || "PARTIAL".equals(statusUpper))) { %>
                                                         <a href="${pageContext.request.contextPath}/shipment/list?orderId=<%= order.getOrderId() %>" 
                                                            class="btn btn-sm btn-success">
                                                             <i class="bi bi-truck"></i> 发货
+                                                        </a>
+                                                    <% } %>
+                                                    <% if (!isAdmin && "SHIPPED".equals(statusUpper) && !isConfirmed) { %>
+                                                        <form action="${pageContext.request.contextPath}/order/confirm" method="post" style="display:inline;">
+                                                            <input type="hidden" name="orderId" value="<%= order.getOrderId() %>">
+                                                            <button type="submit" class="btn btn-sm btn-warning">
+                                                                <i class="bi bi-check-lg"></i> 确认收货
+                                                            </button>
+                                                        </form>
+                                                    <% } %>
+                                                    <% if (!isAdmin && "CREATED".equals(statusUpper)) { %>
+                                                        <a href="${pageContext.request.contextPath}/order/payPage?orderId=<%= order.getOrderId() %>" 
+                                                           class="btn btn-sm btn-success">
+                                                            <i class="bi bi-credit-card"></i> 继续支付
                                                         </a>
                                                     <% } %>
                                                 </td>

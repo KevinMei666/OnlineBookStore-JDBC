@@ -28,6 +28,8 @@ public class AdminSupplierServlet extends HttpServlet {
             handleList(request, response);
         } else if ("/edit".equals(path)) {
             handleEdit(request, response);
+        } else if ("/add".equals(path)) {
+            handleAdd(request, response);
         } else if ("/supply".equals(path)) {
             handleSupply(request, response);
         } else {
@@ -109,12 +111,21 @@ public class AdminSupplierServlet extends HttpServlet {
         request.getRequestDispatcher("/jsp/admin/supplierSupply.jsp").forward(request, response);
     }
 
+    private void handleAdd(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        request.getRequestDispatcher("/jsp/admin/supplierAdd.jsp").forward(request, response);
+    }
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String path = request.getPathInfo();
         if ("/update".equals(path)) {
             handleUpdate(request, response);
+        } else if ("/save".equals(path)) {
+            handleSave(request, response);
+        } else if ("/delete".equals(path)) {
+            handleDelete(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -162,6 +173,55 @@ public class AdminSupplierServlet extends HttpServlet {
             request.getSession().setAttribute("errorMessage", "更新供应商信息时发生错误：" + e.getMessage());
         }
 
+        response.sendRedirect(request.getContextPath() + "/admin/supplier/list");
+    }
+
+    private void handleSave(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        String nameParam = request.getParameter("name");
+        String addressParam = request.getParameter("address");
+        String phoneParam = request.getParameter("phone");
+        String emailParam = request.getParameter("contactEmail");
+
+        if (nameParam == null || nameParam.trim().isEmpty()) {
+            request.getSession().setAttribute("errorMessage", "供应商名称不能为空");
+            response.sendRedirect(request.getContextPath() + "/admin/supplier/add");
+            return;
+        }
+
+        Supplier supplier = new Supplier();
+        supplier.setName(nameParam.trim());
+        supplier.setAddress(addressParam == null ? null : addressParam.trim());
+        supplier.setPhone(phoneParam == null ? null : phoneParam.trim());
+        supplier.setContactEmail(emailParam == null ? null : emailParam.trim());
+
+        int newId = supplierDao.insert(supplier);
+        if (newId > 0) {
+            request.getSession().setAttribute("successMessage", "供应商添加成功，ID=" + newId);
+        } else {
+            request.getSession().setAttribute("errorMessage", "供应商添加失败");
+        }
+        response.sendRedirect(request.getContextPath() + "/admin/supplier/list");
+    }
+
+    private void handleDelete(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        String idParam = request.getParameter("id");
+        int supplierId;
+        try {
+            supplierId = Integer.parseInt(idParam.trim());
+        } catch (Exception e) {
+            request.getSession().setAttribute("errorMessage", "供应商ID无效");
+            response.sendRedirect(request.getContextPath() + "/admin/supplier/list");
+            return;
+        }
+
+        int deleted = supplierDao.deleteById(supplierId);
+        if (deleted > 0) {
+            request.getSession().setAttribute("successMessage", "供应商已删除");
+        } else {
+            request.getSession().setAttribute("errorMessage", "删除失败，可能存在关联数据");
+        }
         response.sendRedirect(request.getContextPath() + "/admin/supplier/list");
     }
 }

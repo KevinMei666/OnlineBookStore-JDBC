@@ -54,6 +54,9 @@ public class OrderServlet extends HttpServlet {
         } else if (pathInfo.equals("/detail")) {
             // 显示订单详情（将在后续实现）
             handleOrderDetail(request, response);
+        } else if (pathInfo.equals("/payPage")) {
+            // 显示支付确认页面
+            handlePayPage(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -80,6 +83,15 @@ public class OrderServlet extends HttpServlet {
         } else if (pathInfo.equals("/clear")) {
             // 清空购物车
             handleClearCart(request, response);
+        } else if (pathInfo.equals("/confirm")) {
+            // 客户确认收货
+            handleConfirmOrder(request, response);
+        } else if (pathInfo.equals("/pay")) {
+            // 执行支付
+            handlePayOrder(request, response);
+        } else if (pathInfo.equals("/payPage")) {
+            // 显示支付确认页面
+            handlePayPage(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -429,6 +441,129 @@ public class OrderServlet extends HttpServlet {
         }
     }
     
+    /**
+     * 显示支付确认页面
+     */
+    private void handlePayPage(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        String orderIdStr = request.getParameter("orderId");
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+        if (customerId == null) {
+            session.setAttribute("errorMessage", "请先登录");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        if (orderIdStr == null || orderIdStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "订单ID不能为空");
+            response.sendRedirect(request.getContextPath() + "/order/list");
+            return;
+        }
+
+        try {
+            int orderId = Integer.parseInt(orderIdStr);
+            model.Orders order = ordersDao.findById(orderId);
+
+            if (order == null || !customerId.equals(order.getCustomerId())) {
+                session.setAttribute("errorMessage", "订单不存在或无权访问");
+                response.sendRedirect(request.getContextPath() + "/order/list");
+                return;
+            }
+
+            if (!"CREATED".equalsIgnoreCase(order.getStatus())) {
+                session.setAttribute("errorMessage", "该订单不是待支付状态");
+                response.sendRedirect(request.getContextPath() + "/order/list");
+                return;
+            }
+
+            // 查询订单明细
+            List<OrderItem> orderItems = orderItemDao.findByOrderId(orderId);
+            // 查询客户信息
+            model.Customer customer = customerDao.findById(customerId);
+
+            request.setAttribute("order", order);
+            request.setAttribute("orderItems", orderItems);
+            request.setAttribute("customer", customer);
+            request.getRequestDispatcher("/jsp/order/payOrder.jsp").forward(request, response);
+
+        } catch (NumberFormatException e) {
+            session.setAttribute("errorMessage", "无效的订单ID");
+            response.sendRedirect(request.getContextPath() + "/order/list");
+        }
+    }
+
+    /**
+     * 执行支付订单
+     */
+    private void handlePayOrder(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        String orderIdStr = request.getParameter("orderId");
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+        if (customerId == null) {
+            session.setAttribute("errorMessage", "请先登录");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        if (orderIdStr == null || orderIdStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "订单ID不能为空");
+            response.sendRedirect(request.getContextPath() + "/order/list");
+            return;
+        }
+
+        try {
+            int orderId = Integer.parseInt(orderIdStr);
+            String result = ordersDao.payOrder(orderId, customerId);
+            if (result == null) {
+                session.setAttribute("successMessage", "支付成功");
+            } else {
+                session.setAttribute("errorMessage", result);
+            }
+        } catch (NumberFormatException e) {
+            session.setAttribute("errorMessage", "无效的订单ID");
+        }
+        response.sendRedirect(request.getContextPath() + "/order/list");
+    }
+
+    /**
+     * 客户确认收货
+     */
+    private void handleConfirmOrder(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        String orderIdStr = request.getParameter("orderId");
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+        if (customerId == null) {
+            session.setAttribute("errorMessage", "请先登录");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        if (orderIdStr == null || orderIdStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "订单ID不能为空");
+            response.sendRedirect(request.getContextPath() + "/order/list");
+            return;
+        }
+
+        try {
+            int orderId = Integer.parseInt(orderIdStr);
+            int updated = ordersDao.confirmOrder(orderId, customerId);
+            if (updated > 0) {
+                session.setAttribute("successMessage", "订单已确认收货");
+            } else {
+                session.setAttribute("errorMessage", "确认收货失败，请检查订单状态");
+            }
+        } catch (NumberFormatException e) {
+            session.setAttribute("errorMessage", "无效的订单ID");
+        }
+        response.sendRedirect(request.getContextPath() + "/order/list");
+    }
+
     /**
      * 更新订单收货地址
      */

@@ -41,5 +41,5 @@ Desktop.ini
 *.local.*
 *.env
 .env
-
+lib/
 

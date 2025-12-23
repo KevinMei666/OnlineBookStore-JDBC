@@ -38,6 +38,10 @@
             statusBadgeClass = "bg-secondary";
             statusText = "已创建";
             break;
+        case "PAID":
+            statusBadgeClass = "bg-info";
+            statusText = "已支付";
+            break;
         case "PARTIAL":
             statusBadgeClass = "bg-warning";
             statusText = "部分发货";
@@ -178,7 +182,7 @@
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="bi bi-truck"></i> 发货记录</span>
-                        <% if (isAdmin && !"SHIPPED".equals(statusUpper)) { %>
+                        <% if (isAdmin && ("PAID".equals(statusUpper) || "PARTIAL".equals(statusUpper))) { %>
                             <a href="${pageContext.request.contextPath}/shipment/list?orderId=<%= order.getOrderId() %>" 
                                class="btn btn-sm btn-success">
                                 <i class="bi bi-plus-circle"></i> 执行发货

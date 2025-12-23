@@ -18,7 +18,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>发货管理 - 网上书店管理系统</title>
+    <title>物流管理 - 网上书店管理系统</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -34,40 +34,66 @@
         <div class="row">
             <div class="col-12">
                 <h2 class="mb-4">
-                    <i class="bi bi-truck"></i> 发货管理
+                    <i class="bi bi-truck"></i> 物流管理
                 </h2>
                 
-                <!-- 待发货订单项列表 -->
+                <!-- 物流管理订单列表 -->
                 <div class="card">
                     <div class="card-header">
-                        <i class="bi bi-table"></i> 待发货订单项
+                        <i class="bi bi-table"></i> 物流管理
                         <span class="badge bg-primary ms-2"><%= pendingShipments.size() %> 项</span>
                     </div>
                     <div class="card-body">
                         <% if (pendingShipments.isEmpty()) { %>
                             <div class="alert alert-info text-center">
-                                <i class="bi bi-info-circle"></i> 暂无待发货的订单项
+                                <i class="bi bi-info-circle"></i> 暂无订单
                             </div>
                         <% } else { %>
                             <div class="table-responsive">
                                 <table class="table table-hover table-striped">
                                     <thead>
                                         <tr>
-                                            <th width="10%">订单ID</th>
-                                            <th width="30%">书名</th>
-                                            <th width="15%">订购数量</th>
-                                            <th width="15%">已发货数量</th>
-                                            <th width="15%">待发货数量</th>
-                                            <th width="15%">操作</th>
+                                            <th width="8%">订单ID</th>
+                                            <th width="8%">订单状态</th>
+                                            <th width="28%">书名</th>
+                                            <th width="12%">订购数量</th>
+                                            <th width="12%">已发货数量</th>
+                                            <th width="12%">待发货数量</th>
+                                            <th width="20%">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <% for (Map<String, Object> item : pendingShipments) { 
                                             Integer orderId = (Integer) item.get("orderId");
+                                            String orderStatus = (String) item.get("orderStatus");
                                             Integer bookId = (Integer) item.get("bookId");
                                             Integer orderQuantity = (Integer) item.get("orderQuantity");
                                             Integer shippedQuantity = (Integer) item.get("shippedQuantity");
                                             Integer pendingQuantity = (Integer) item.get("pendingQuantity");
+                                            
+                                            String statusUpper = orderStatus != null ? orderStatus.toUpperCase() : "";
+                                            String statusBadgeClass = "";
+                                            String statusText = "";
+                                            
+                                            switch (statusUpper) {
+                                                case "PAID":
+                                                    statusBadgeClass = "bg-info";
+                                                    statusText = "已支付";
+                                                    break;
+                                                case "PARTIAL":
+                                                    statusBadgeClass = "bg-warning";
+                                                    statusText = "部分发货";
+                                                    break;
+                                                case "SHIPPED":
+                                                    statusBadgeClass = "bg-success";
+                                                    statusText = "已发货";
+                                                    break;
+                                                default:
+                                                    statusBadgeClass = "bg-secondary";
+                                                    statusText = orderStatus != null ? orderStatus : "未知";
+                                            }
+                                            
+                                            boolean canShip = ("PAID".equals(statusUpper) || "PARTIAL".equals(statusUpper)) && pendingQuantity > 0;
                                             
                                             model.Book book = bookDao.findById(bookId);
                                             String bookTitle = book != null && book.getTitle() != null ? 
@@ -75,6 +101,11 @@
                                         %>
                                             <tr>
                                                 <td><strong>#<%= orderId %></strong></td>
+                                                <td>
+                                                    <span class="badge <%= statusBadgeClass %>">
+                                                        <%= statusText %>
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     <a href="${pageContext.request.contextPath}/book/detail?bookId=<%= bookId %>" 
                                                        class="text-decoration-none">
@@ -86,18 +117,27 @@
                                                     <span class="badge bg-info"><%= shippedQuantity %></span>
                                                 </td>
                                                 <td>
-                                                    <span class="badge bg-warning"><%= pendingQuantity %></span>
+                                                    <% if (pendingQuantity > 0) { %>
+                                                        <span class="badge bg-warning"><%= pendingQuantity %></span>
+                                                    <% } else { %>
+                                                        <span class="badge bg-success">已全部发货</span>
+                                                    <% } %>
                                                 </td>
                                                 <td>
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-success" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#shipModal<%= orderId %>_<%= bookId %>">
-                                                        <i class="bi bi-truck"></i> 发货
-                                                    </button>
+                                                    <% if (canShip) { %>
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-success" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#shipModal<%= orderId %>_<%= bookId %>">
+                                                            <i class="bi bi-truck"></i> 发货
+                                                        </button>
+                                                    <% } else { %>
+                                                        <span class="text-muted">已发货</span>
+                                                    <% } %>
                                                 </td>
                                             </tr>
                                             
+                                            <% if (canShip) { %>
                                             <!-- 发货模态框 -->
                                             <div class="modal fade" id="shipModal<%= orderId %>_<%= bookId %>" tabindex="-1" 
                                                  aria-labelledby="shipModalLabel<%= orderId %>_<%= bookId %>" aria-hidden="true">
@@ -170,6 +210,7 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            <% } %>
                                         <% } %>
                                     </tbody>
                                 </table>

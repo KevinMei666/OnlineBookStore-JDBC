@@ -406,12 +406,20 @@ public class PurchaseServlet extends HttpServlet {
             return;
         }
 
-        // 选择供应商：优先用缺书记录里的 SupplierID，否则从 BookSupplier 取第一个，否则报错
+        // 选择供应商及供货价：优先用缺书记录里的 SupplierID，否则从 BookSupplier 取第一个，否则报错
         Integer supplierId = shortage.getSupplierId();
-        if (supplierId == null) {
-            java.util.List<model.BookSupplier> suppliers = bookSupplierDao.findByBookId(shortage.getBookId());
-            if (suppliers != null && !suppliers.isEmpty()) {
-                supplierId = suppliers.get(0).getSupplierId();
+        java.math.BigDecimal supplyPrice = java.math.BigDecimal.ZERO;
+        java.util.List<model.BookSupplier> suppliers = bookSupplierDao.findByBookId(shortage.getBookId());
+        if (suppliers != null && !suppliers.isEmpty()) {
+            for (model.BookSupplier bs : suppliers) {
+                if (supplierId == null) {
+                    supplierId = bs.getSupplierId();
+                    supplyPrice = bs.getSupplyPrice() != null ? bs.getSupplyPrice() : java.math.BigDecimal.ZERO;
+                    break;
+                } else if (bs.getSupplierId().equals(supplierId)) {
+                    supplyPrice = bs.getSupplyPrice() != null ? bs.getSupplyPrice() : java.math.BigDecimal.ZERO;
+                    break;
+                }
             }
         }
         if (supplierId == null) {
@@ -420,13 +428,16 @@ public class PurchaseServlet extends HttpServlet {
             return;
         }
 
+        // 计算采购总金额
+        java.math.BigDecimal totalAmount = supplyPrice.multiply(java.math.BigDecimal.valueOf(shortage.getQuantity()));
+
         // 构造采购单
         PurchaseOrder order = new PurchaseOrder();
         order.setSupplierId(supplierId);
         order.setShortageId(shortageId);
         order.setCreateDate(java.time.LocalDateTime.now());
         order.setStatus("CREATED");
-        order.setTotalAmount(java.math.BigDecimal.ZERO); // 简化：后续可接入供货价
+        order.setTotalAmount(totalAmount);
 
         // 插入采购单（包含标记缺书为已处理的事务）
         int poId = purchaseOrderDao.insertWithShortageUpdate(order);
@@ -436,12 +447,12 @@ public class PurchaseServlet extends HttpServlet {
             return;
         }
 
-        // 插入采购明细：单价暂定 0（可后续接入供货价），数量=缺书数量
+        // 插入采购明细
         PurchaseItem item = new PurchaseItem();
         item.setPurchaseOrderId(poId);
         item.setBookId(shortage.getBookId());
         item.setQuantity(shortage.getQuantity());
-        item.setUnitPrice(java.math.BigDecimal.ZERO);
+        item.setUnitPrice(supplyPrice);
         purchaseItemDao.insert(item);
 
         session.setAttribute("successMessage", "已根据缺书记录生成采购单，ID=" + poId);
