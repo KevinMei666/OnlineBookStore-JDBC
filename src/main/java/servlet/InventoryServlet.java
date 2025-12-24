@@ -119,7 +119,15 @@ public class InventoryServlet extends HttpServlet {
             int shortageQty = Math.max(0, threshold - stockVal);
             boolean exists = false;
             if (b.getBookId() != null) {
-                exists = shortageRecordDao.existsUnprocessedByBookIdAndSource(b.getBookId(), "THRESHOLD");
+                exists = shortageRecordDao.existsUnprocessedByBookId(b.getBookId());
+            }
+
+            // 自动生成缺书记录：低于阈值且不存在未处理记录
+            if (low && !exists && b.getBookId() != null) {
+                int generatedId = createShortageRecord(b.getBookId(), shortageQty, "THRESHOLD");
+                if (generatedId > 0) {
+                    exists = true;
+                }
             }
             rows.add(new InventoryRow(
                     b.getBookId(),
@@ -142,6 +150,7 @@ public class InventoryServlet extends HttpServlet {
             throws IOException {
         int threshold = parseIntOrDefault(request.getParameter("threshold"), DEFAULT_THRESHOLD);
         int bookId = parseIntOrDefault(request.getParameter("bookId"), -1);
+        int manualQty = parseIntOrDefault(request.getParameter("shortageQty"), -1);
 
         if (bookId <= 0) {
             request.getSession().setAttribute("errorMessage", "BookID 无效");
@@ -157,37 +166,23 @@ public class InventoryServlet extends HttpServlet {
         }
 
         int stock = book.getStockQuantity() == null ? 0 : book.getStockQuantity();
-        if (stock >= threshold) {
-            request.getSession().setAttribute("infoMessage", "库存充足，无需生成缺书记录");
+        // 避免重复：存在任意未处理缺书记录则不再生成
+        if (shortageRecordDao.existsUnprocessedByBookId(bookId)) {
+            request.getSession().setAttribute("warningMessage", "该图书已存在未处理的缺书记录");
             response.sendRedirect(request.getContextPath() + "/admin/inventory/list?threshold=" + threshold);
             return;
         }
 
-        // 避免重复：同一本书 + THRESHOLD + 未处理
-        if (shortageRecordDao.existsUnprocessedByBookIdAndSource(bookId, "THRESHOLD")) {
-            request.getSession().setAttribute("warningMessage", "该图书已存在未处理的缺书记录（THRESHOLD）");
-            response.sendRedirect(request.getContextPath() + "/admin/inventory/list?threshold=" + threshold);
-            return;
+        int shortageQty;
+        if (manualQty > 0) {
+            shortageQty = manualQty;
+        } else if (stock < threshold) {
+            shortageQty = threshold - stock;
+        } else {
+            shortageQty = 1; // 库存充足时允许手动生成，默认 1 本
         }
 
-        int shortageQty = threshold - stock;
-
-        Integer supplierId = null;
-        List<BookSupplier> suppliers = bookSupplierDao.findByBookId(bookId);
-        if (!suppliers.isEmpty()) {
-            supplierId = suppliers.get(0).getSupplierId();
-        }
-
-        ShortageRecord record = new ShortageRecord();
-        record.setBookId(bookId);
-        record.setSupplierId(supplierId);
-        record.setCustomerId(null);
-        record.setQuantity(shortageQty);
-        record.setDate(LocalDateTime.now());
-        record.setSourceType("THRESHOLD");
-        record.setProcessed(false);
-
-        int id = shortageRecordDao.insert(record);
+        int id = createShortageRecord(bookId, shortageQty, "MANUAL_INV");
         if (id > 0) {
             request.getSession().setAttribute("successMessage", "缺书记录已生成（ShortageID=" + id + "）");
         } else {
@@ -206,6 +201,27 @@ public class InventoryServlet extends HttpServlet {
         } catch (NumberFormatException e) {
             return def;
         }
+    }
+
+    /**
+     * 公共创建缺书记录方法
+     */
+    private int createShortageRecord(int bookId, int shortageQty, String sourceType) {
+        Integer supplierId = null;
+        List<BookSupplier> suppliers = bookSupplierDao.findByBookId(bookId);
+        if (!suppliers.isEmpty()) {
+            supplierId = suppliers.get(0).getSupplierId();
+        }
+
+        ShortageRecord record = new ShortageRecord();
+        record.setBookId(bookId);
+        record.setSupplierId(supplierId);
+        record.setCustomerId(null);
+        record.setQuantity(shortageQty);
+        record.setDate(LocalDateTime.now());
+        record.setSourceType(sourceType);
+        record.setProcessed(false);
+        return shortageRecordDao.insert(record);
     }
 }
 

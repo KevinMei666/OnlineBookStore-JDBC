@@ -18,7 +18,7 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h2 class="h5 mb-1">库存管理</h2>
-                    <p class="text-muted small mb-0">按库存阈值生成缺书记录（避免重复）。</p>
+                    <p class="text-muted small mb-0">低库存自动生成缺书记录，库存充足时也可手动生成。</p>
                 </div>
             </div>
 
@@ -82,11 +82,13 @@
                                     </c:when>
                                     <c:otherwise>
                                         <form method="post" action="${pageContext.request.contextPath}/admin/inventory/generateShortage"
-                                              style="display:inline;">
+                                              class="d-inline-flex align-items-center gap-2">
                                             <input type="hidden" name="bookId" value="${r.bookId}">
                                             <input type="hidden" name="threshold" value="${threshold}">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary"
-                                                    <c:if test="${not r.lowStock}">disabled</c:if>>
+                                            <input type="number" name="shortageQty" class="form-control form-control-sm"
+                                                   style="width: 90px;" min="1"
+                                                   placeholder="数量">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
                                                 生成缺书记录
                                             </button>
                                         </form>

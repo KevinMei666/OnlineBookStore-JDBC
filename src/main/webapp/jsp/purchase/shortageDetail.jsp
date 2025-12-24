@@ -69,7 +69,7 @@
                                   onsubmit="return confirm('确认根据该缺书记录生成采购单吗？');">
                                 <input type="hidden" name="shortageId" value="<%= record.getShortageId() %>">
                                 <button type="submit"
-                                        class="btn btn-success btn-sm"
+                                        class="btn btn-success btn-sm d-inline-flex align-items-center gap-1"
                                         <%= isProcessed ? "disabled" : "" %>>
                                     <i class="bi bi-box-seam"></i> 生成采购单
                                 </button>

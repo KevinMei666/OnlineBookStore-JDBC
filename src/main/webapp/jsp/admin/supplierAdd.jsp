@@ -1,4 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -48,6 +49,42 @@
                     </div>
                 </div>
             </form>
+
+            <hr class="my-4">
+            <h5 class="mb-3">供货书目</h5>
+            <p class="text-muted small">从现有图书中选择并填写供货价，可多选。</p>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th>选择</th>
+                        <th>书号</th>
+                        <th>书名</th>
+                        <th>出版社</th>
+                        <th>零售价</th>
+                        <th style="width: 160px;">供货价</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <c:forEach var="b" items="${books}">
+                        <tr>
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input" name="bookId" value="${b.bookId}">
+                            </td>
+                            <td>${b.bookId}</td>
+                            <td>${b.title}</td>
+                            <td>${b.publisher}</td>
+                            <td>${b.price}</td>
+                            <td>
+                                <input type="number" step="0.01" class="form-control form-control-sm"
+                                       name="supplyPrice_${b.bookId}" placeholder="供货价"
+                                       value="${supplyPriceMap[b.bookId]}">
+                            </td>
+                        </tr>
+                    </c:forEach>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

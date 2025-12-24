@@ -5,9 +5,12 @@ import dao.CustomerDao;
 import dao.OrderItemDao;
 import dao.OrdersDao;
 import dao.ShipmentDao;
+import dao.BookSupplierDao;
+import dao.ShortageRecordDao;
 import model.Book;
 import model.CartItem;
 import model.OrderItem;
+import model.ShortageRecord;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -17,6 +20,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 public class OrderServlet extends HttpServlet {
     
@@ -25,6 +29,8 @@ public class OrderServlet extends HttpServlet {
     private CustomerDao customerDao;
     private OrderItemDao orderItemDao;
     private ShipmentDao shipmentDao;
+    private BookSupplierDao bookSupplierDao;
+    private ShortageRecordDao shortageRecordDao;
     
     @Override
     public void init() throws ServletException {
@@ -34,6 +40,8 @@ public class OrderServlet extends HttpServlet {
         customerDao = new CustomerDao();
         orderItemDao = new OrderItemDao();
         shipmentDao = new ShipmentDao();
+        bookSupplierDao = new BookSupplierDao();
+        shortageRecordDao = new ShortageRecordDao();
     }
     
     @Override
@@ -201,6 +209,29 @@ public class OrderServlet extends HttpServlet {
             session.setAttribute("errorMessage", "购物车为空，无法创建订单");
             response.sendRedirect(request.getContextPath() + "/order/cart");
             return;
+        }
+
+        // 1) 下单前库存校验：若有任意商品缺货，阻止下单并生成缺书记录
+        for (CartItem cartItem : cart) {
+            Book book = bookDao.findById(cartItem.getBookId());
+            if (book == null) {
+                session.setAttribute("errorMessage", "图书不存在（BookID=" + cartItem.getBookId() + "），请刷新购物车");
+                response.sendRedirect(request.getContextPath() + "/order/cart");
+                return;
+            }
+            int stock = book.getStockQuantity() == null ? 0 : book.getStockQuantity();
+            int required = cartItem.getQuantity();
+            if (required > stock) {
+                int shortageQty = required - stock;
+                // 避免重复缺书记录
+                if (!shortageRecordDao.existsUnprocessedByBookId(cartItem.getBookId())) {
+                    createShortageRecord(cartItem.getBookId(), shortageQty, "ORDER");
+                }
+                session.setAttribute("errorMessage",
+                        "库存不足，无法下单（" + book.getTitle() + "，库存 " + stock + "，需要 " + required + "），已生成缺书记录");
+                response.sendRedirect(request.getContextPath() + "/order/checkout");
+                return;
+            }
         }
         
         // 获取收货地址
@@ -562,6 +593,27 @@ public class OrderServlet extends HttpServlet {
             session.setAttribute("errorMessage", "无效的订单ID");
         }
         response.sendRedirect(request.getContextPath() + "/order/list");
+    }
+
+    /**
+     * 创建缺书记录（下单时库存不足）
+     */
+    private int createShortageRecord(int bookId, int shortageQty, String sourceType) {
+        Integer supplierId = null;
+        var suppliers = bookSupplierDao.findByBookId(bookId);
+        if (!suppliers.isEmpty()) {
+            supplierId = suppliers.get(0).getSupplierId();
+        }
+
+        ShortageRecord record = new ShortageRecord();
+        record.setBookId(bookId);
+        record.setSupplierId(supplierId);
+        record.setCustomerId(null);
+        record.setQuantity(shortageQty);
+        record.setDate(LocalDateTime.now());
+        record.setSourceType(sourceType);
+        record.setProcessed(false);
+        return shortageRecordDao.insert(record);
     }
 
     /**

@@ -254,6 +254,14 @@ body {
     padding: 0.4rem 0.9rem;
 }
 
+/* 固定按钮文字水平排布，防止窄列竖排 */
+.btn,
+.btn span,
+.btn .text,
+.btn .btn-text {
+    white-space: nowrap;
+}
+
 .btn-primary {
     background-color: var(--primary-color);
     border-color: var(--primary-color);

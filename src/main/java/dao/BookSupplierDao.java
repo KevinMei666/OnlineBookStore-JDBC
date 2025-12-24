@@ -136,6 +136,27 @@ public class BookSupplierDao {
         }
         return list;
     }
+
+    /**
+     * 删除某个供应商的所有供货记录
+     */
+    public int deleteBySupplierId(int supplierId) {
+        String sql = "DELETE FROM BookSupplier WHERE SupplierID = ?";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, supplierId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            DBUtil.closeQuietly(ps);
+            DBUtil.closeQuietly(conn);
+        }
+    }
 }
 
 

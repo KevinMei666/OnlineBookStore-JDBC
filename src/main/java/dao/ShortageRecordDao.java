@@ -38,6 +38,28 @@ public class ShortageRecordDao {
         }
     }
 
+    /**
+     * 是否存在未处理的缺书记录（不区分来源）
+     */
+    public boolean existsUnprocessedByBookId(int bookId) {
+        String sql = "SELECT 1 FROM ShortageRecord WHERE BookID = ? AND Processed = 0 LIMIT 1";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, bookId);
+            rs = ps.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+    }
+
     public int insert(ShortageRecord record) {
         String sql = "INSERT INTO ShortageRecord " +
                 "(BookID, SupplierID, CustomerID, Quantity, Date, SourceType, Processed) " +

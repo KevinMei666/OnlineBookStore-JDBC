@@ -53,10 +53,12 @@
                             <td>${b.stockQuantity}</td>
                             <td>${b.supplyPrice}</td>
                             <td class="text-center">
-                                <a class="btn btn-sm btn-outline-primary"
-                                   href="${pageContext.request.contextPath}/book/detail?bookId=${b.bookId}">
-                                    查看图书
-                                </a>
+                                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="${pageContext.request.contextPath}/book/detail?bookId=${b.bookId}">
+                                        查看图书
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     </c:forEach>

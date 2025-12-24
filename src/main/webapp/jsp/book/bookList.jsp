@@ -125,7 +125,7 @@
                                                 </div>
                                             <% } %>
                                             
-                                                    <div class="card-body d-flex flex-column">
+                                            <div class="card-body d-flex flex-column">
                                                 <!-- 书名 -->
                                                 <h5 class="card-title">
                                                     <a href="${pageContext.request.contextPath}/book/detail?bookId=<%= book.getBookId() %>" 

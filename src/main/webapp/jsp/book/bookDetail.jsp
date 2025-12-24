@@ -142,17 +142,17 @@
                                             <i class="bi bi-pencil-square"></i> 修改信息
                                         </a>
                                     <% } else { %>
-                                        <form action="${pageContext.request.contextPath}/book" method="POST" class="d-inline me-2">
-                                            <input type="hidden" name="action" value="addToCart">
-                                            <input type="hidden" name="bookId" value="<%= book.getBookId() %>">
-                                            <button type="submit" class="btn btn-primary btn-lg">
-                                                <i class="bi bi-cart-plus"></i> 加入购物车
-                                            </button>
-                                        </form>
-                                        <a href="${pageContext.request.contextPath}/order/checkout?bookId=<%= book.getBookId() %>" 
-                                           class="btn btn-success btn-lg">
-                                            <i class="bi bi-bag-check"></i> 立即下单
-                                        </a>
+                                    <form action="${pageContext.request.contextPath}/book" method="POST" class="d-inline me-2">
+                                        <input type="hidden" name="action" value="addToCart">
+                                        <input type="hidden" name="bookId" value="<%= book.getBookId() %>">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="bi bi-cart-plus"></i> 加入购物车
+                                        </button>
+                                    </form>
+                                    <a href="${pageContext.request.contextPath}/order/checkout?bookId=<%= book.getBookId() %>" 
+                                       class="btn btn-success btn-lg">
+                                        <i class="bi bi-bag-check"></i> 立即下单
+                                    </a>
                                     <% } %>
                                 </div>
                             </div>

@@ -2,8 +2,10 @@ package servlet;
 
 import dao.SupplierDao;
 import dao.BookSupplierDao;
+import dao.BookDao;
 import model.Supplier;
 import model.SupplierSupply;
+import model.Book;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -19,6 +21,7 @@ public class AdminSupplierServlet extends HttpServlet {
 
     private final SupplierDao supplierDao = new SupplierDao();
     private final BookSupplierDao bookSupplierDao = new BookSupplierDao();
+    private final BookDao bookDao = new BookDao();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -78,7 +81,18 @@ public class AdminSupplierServlet extends HttpServlet {
             return;
         }
 
+        List<Book> books = bookDao.findAll();
+        List<SupplierSupply> supplies = bookSupplierDao.findSupplyBooksBySupplierId(supplierId);
+        java.util.Map<Integer, java.math.BigDecimal> supplyPriceMap = new java.util.HashMap<>();
+        for (SupplierSupply s : supplies) {
+            if (s.getBookId() != null && s.getSupplyPrice() != null) {
+                supplyPriceMap.put(s.getBookId(), s.getSupplyPrice());
+            }
+        }
         request.setAttribute("supplier", supplier);
+        request.setAttribute("books", books);
+        request.setAttribute("supplies", supplies);
+        request.setAttribute("supplyPriceMap", supplyPriceMap);
         request.getRequestDispatcher("/jsp/admin/supplierEdit.jsp").forward(request, response);
     }
 
@@ -113,6 +127,9 @@ public class AdminSupplierServlet extends HttpServlet {
 
     private void handleAdd(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        List<Book> books = bookDao.findAll();
+        request.setAttribute("books", books);
+        request.setAttribute("supplyPriceMap", new java.util.HashMap<Integer, java.math.BigDecimal>());
         request.getRequestDispatcher("/jsp/admin/supplierAdd.jsp").forward(request, response);
     }
 
@@ -168,6 +185,9 @@ public class AdminSupplierServlet extends HttpServlet {
             } else {
                 request.getSession().setAttribute("errorMessage", "更新供应商信息失败");
             }
+
+            // 同步供货书目
+            saveSupplierBooks(supplierId, request);
         } catch (Exception e) {
             e.printStackTrace();
             request.getSession().setAttribute("errorMessage", "更新供应商信息时发生错误：" + e.getMessage());
@@ -198,6 +218,8 @@ public class AdminSupplierServlet extends HttpServlet {
         int newId = supplierDao.insert(supplier);
         if (newId > 0) {
             request.getSession().setAttribute("successMessage", "供应商添加成功，ID=" + newId);
+            // 同步供货书目
+            saveSupplierBooks(newId, request);
         } else {
             request.getSession().setAttribute("errorMessage", "供应商添加失败");
         }
@@ -223,6 +245,34 @@ public class AdminSupplierServlet extends HttpServlet {
             request.getSession().setAttribute("errorMessage", "删除失败，可能存在关联数据");
         }
         response.sendRedirect(request.getContextPath() + "/admin/supplier/list");
+    }
+
+    /**
+     * 处理供应商的供货书目绑定
+     */
+    private void saveSupplierBooks(int supplierId, HttpServletRequest request) {
+        String[] bookIds = request.getParameterValues("bookId");
+        if (bookIds == null || bookIds.length == 0) {
+            // 未选择任何书，直接清空供货关系
+            bookSupplierDao.deleteBySupplierId(supplierId);
+            return;
+        }
+
+        // 先清空旧的，再批量插入/更新
+        bookSupplierDao.deleteBySupplierId(supplierId);
+
+        for (String bIdStr : bookIds) {
+            if (bIdStr == null || bIdStr.trim().isEmpty()) continue;
+            try {
+                int bookId = Integer.parseInt(bIdStr.trim());
+                String priceStr = request.getParameter("supplyPrice_" + bookId);
+                if (priceStr == null || priceStr.trim().isEmpty()) continue;
+                java.math.BigDecimal supplyPrice = new java.math.BigDecimal(priceStr.trim());
+                if (supplyPrice.compareTo(java.math.BigDecimal.ZERO) < 0) continue;
+                bookSupplierDao.bindSupplierToBook(bookId, supplierId, supplyPrice);
+            } catch (Exception ignore) {
+            }
+        }
     }
 }
 
