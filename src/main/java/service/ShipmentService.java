@@ -28,6 +28,8 @@ public class ShipmentService {
         PreparedStatement selectCustomerPs = null;
         PreparedStatement selectOrderItemPs = null;
         PreparedStatement selectShippedPs = null;
+        PreparedStatement selectStockPs = null;
+        PreparedStatement updateStockPs = null;
         PreparedStatement updateCustomerPs = null;
         PreparedStatement insertShipmentPs = null;
         PreparedStatement updateOrderStatusPs = null;
@@ -104,6 +106,32 @@ public class ShipmentService {
             int remaining = totalQuantity - shippedQty;
             if (shipQuantity <= 0 || shipQuantity > remaining) {
                 throw new SQLException("Invalid ship quantity. Remaining=" + remaining + ", shipQuantity=" + shipQuantity);
+            }
+
+            // 4.5 检查并扣减库存
+            String selectStockSql = "SELECT StockQuantity FROM Book WHERE BookID = ? FOR UPDATE";
+            selectStockPs = conn.prepareStatement(selectStockSql);
+            selectStockPs.setInt(1, bookId);
+            rs = selectStockPs.executeQuery();
+            if (!rs.next()) {
+                throw new SQLException("Book not found, BookID=" + bookId);
+            }
+            int currentStock = rs.getInt("StockQuantity");
+            rs.close();
+            rs = null;
+            
+            if (currentStock < shipQuantity) {
+                throw new SQLException("库存不足，无法发货。当前库存：" + currentStock + "，需要发货：" + shipQuantity);
+            }
+            
+            // 扣减库存
+            String updateStockSql = "UPDATE Book SET StockQuantity = StockQuantity - ? WHERE BookID = ?";
+            updateStockPs = conn.prepareStatement(updateStockSql);
+            updateStockPs.setInt(1, shipQuantity);
+            updateStockPs.setInt(2, bookId);
+            int stockUpdated = updateStockPs.executeUpdate();
+            if (stockUpdated != 1) {
+                throw new SQLException("扣减库存失败，BookID=" + bookId);
             }
 
             boolean alreadyPaid = "PAID".equalsIgnoreCase(orderStatus);
@@ -204,6 +232,8 @@ public class ShipmentService {
             closeQuietly(selectCustomerPs);
             closeQuietly(selectOrderItemPs);
             closeQuietly(selectShippedPs);
+            closeQuietly(selectStockPs);
+            closeQuietly(updateStockPs);
             closeQuietly(updateCustomerPs);
             closeQuietly(insertShipmentPs);
             closeQuietly(updateOrderStatusPs);

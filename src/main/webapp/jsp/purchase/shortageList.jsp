@@ -144,22 +144,17 @@
                                                 </td>
                                                 <td>
                                                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                        <a href="${pageContext.request.contextPath}/purchase/shortage/detail?shortageId=<%= record.getShortageId() %>" 
+                                                    <a href="${pageContext.request.contextPath}/purchase/shortage/detail?shortageId=<%= record.getShortageId() %>" 
                                                            class="btn btn-sm btn-outline-primary"
                                                            style="white-space: nowrap;">
-                                                            <i class="bi bi-eye"></i> 查看
-                                                        </a>
-                                                        <form method="post"
-                                                              action="${pageContext.request.contextPath}/purchase/shortage/createPo"
-                                                              class="d-inline">
-                                                            <input type="hidden" name="shortageId" value="<%= record.getShortageId() %>">
-                                                            <button type="submit"
-                                                                    class="btn btn-sm btn-success"
-                                                                    style="white-space: nowrap;"
-                                                                    <%= isProcessed ? "disabled" : "" %>>
-                                                                <i class="bi bi-box-seam"></i> 生成采购单
-                                                            </button>
-                                                        </form>
+                                                        <i class="bi bi-eye"></i> 查看
+                                                    </a>
+                                                    <a href="${pageContext.request.contextPath}/purchase/shortage/createPo?shortageId=<%= record.getShortageId() %>"
+                                                       class="btn btn-sm btn-success"
+                                                       style="white-space: nowrap;"
+                                                       <%= isProcessed ? "onclick=\"return false;\" style=\"pointer-events: none; opacity: 0.5;\"" : "" %>>
+                                                        <i class="bi bi-box-seam"></i> 生成采购单
+                                                    </a>
                                                     </div>
                                                 </td>
                                             </tr>

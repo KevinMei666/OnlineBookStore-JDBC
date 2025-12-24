@@ -10,7 +10,7 @@ import java.sql.Statement;
 public final class DBUtil {
 
     private static final String JDBC_URL =
-            "jdbc:mysql://localhost:3306/OnlineBookStore?useSSL=false&serverTimezone=Asia/Shanghai";
+            "jdbc:mysql://localhost:3306/OnlineBookStore?useSSL=false&serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=UTF-8";
     private static final String JDBC_USER = "root";
     private static final String JDBC_PASSWORD = "666666";
 

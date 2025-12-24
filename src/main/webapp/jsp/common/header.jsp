@@ -59,6 +59,9 @@
         } else if (currentPath.contains("/book")) {
             pageTitle = "书目查询";
             pageIcon = "bi-search";
+        } else if (currentPath.contains("/customer/shortage")) {
+            pageTitle = "缺书登记";
+            pageIcon = "bi-exclamation-triangle";
         } else if (currentPath.contains("/customer")) {
             pageTitle = "用户中心";
             pageIcon = "bi-person-square";
@@ -120,9 +123,15 @@
             <div class="sidebar-section-title">我的账户</div>
             <ul class="sidebar-nav">
                 <li>
-                    <a class="sidebar-link <%= currentPath.contains("/customer") ? "active" : "" %>"
+                    <a class="sidebar-link <%= currentPath.contains("/customer") && !currentPath.contains("/customer/shortage") ? "active" : "" %>"
                            href="${pageContext.request.contextPath}/customer/info">
                             <i class="bi bi-person-square"></i> 用户中心
+                        </a>
+                    </li>
+                <li>
+                    <a class="sidebar-link <%= currentPath.contains("/customer/shortage") ? "active" : "" %>"
+                           href="${pageContext.request.contextPath}/customer/shortage/register">
+                            <i class="bi bi-exclamation-triangle"></i> 缺书登记
                         </a>
                     </li>
             </ul>

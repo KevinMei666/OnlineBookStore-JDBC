@@ -286,6 +286,9 @@ public class PurchaseServlet extends HttpServlet {
         } else if (pathInfo.equals("/shortage/create")) {
             // 显示创建缺书记录页面
             loadCreateShortagePage(request, response);
+        } else if (pathInfo.equals("/shortage/createPo")) {
+            // 显示从缺书记录生成采购单的编辑页面
+            handleCreatePoFromShortagePage(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -362,11 +365,68 @@ public class PurchaseServlet extends HttpServlet {
     }
 
     /**
-     * 从缺书记录生成采购单：
+     * 显示从缺书记录生成采购单的编辑页面
+     */
+    private void handleCreatePoFromShortagePage(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String shortageIdStr = request.getParameter("shortageId");
+        HttpSession session = request.getSession();
+        
+        if (shortageIdStr == null || shortageIdStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "缺书记录ID不能为空");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        
+        int shortageId;
+        try {
+            shortageId = Integer.parseInt(shortageIdStr.trim());
+        } catch (NumberFormatException e) {
+            session.setAttribute("errorMessage", "无效的缺书记录ID");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        
+        ShortageRecord shortage = shortageRecordDao.findById(shortageId);
+        if (shortage == null) {
+            session.setAttribute("errorMessage", "缺书记录不存在");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        if (shortage.getProcessed() != null && shortage.getProcessed()) {
+            session.setAttribute("warningMessage", "该缺书记录已处理，无需重复生成采购单");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        if (shortage.getBookId() == null) {
+            session.setAttribute("errorMessage", "缺书记录缺少书籍信息，无法生成采购单");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        
+        // 获取图书信息
+        model.Book book = bookDao.findById(shortage.getBookId());
+        if (book == null) {
+            session.setAttribute("errorMessage", "图书不存在");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+            return;
+        }
+        
+        // 获取该图书的所有可用供应商
+        List<model.BookSupplier> bookSuppliers = bookSupplierDao.findByBookId(shortage.getBookId());
+        
+        request.setAttribute("shortage", shortage);
+        request.setAttribute("book", book);
+        request.setAttribute("bookSuppliers", bookSuppliers);
+        request.getRequestDispatcher("/jsp/purchase/createPoFromShortage.jsp").forward(request, response);
+    }
+    
+    /**
+     * 从缺书记录生成采购单（提交）：
      * 1. 校验缺书记录是否存在、是否未处理
-     * 2. 选择供应商（优先缺书记录中的 SupplierID，否则 BookSupplier 表的首个，否则报错）
+     * 2. 使用用户选择的供应商和数量
      * 3. 创建采购单（状态 CREATED，关联 ShortageID）
-     * 4. 创建采购明细（BookID，Quantity=缺书数量，单价=0 默认；可后续扩展供货价）
+     * 4. 创建采购明细（BookID，Quantity=用户输入数量，单价=供应商供货价）
      * 5. 标记缺书记录为已处理
      */
     private void handleCreatePoFromShortage(HttpServletRequest request, HttpServletResponse response)
@@ -400,36 +460,66 @@ public class PurchaseServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
             return;
         }
-        if (shortage.getBookId() == null || shortage.getQuantity() == null) {
-            session.setAttribute("errorMessage", "缺书记录缺少书籍或数量信息，无法生成采购单");
+        if (shortage.getBookId() == null) {
+            session.setAttribute("errorMessage", "缺书记录缺少书籍信息，无法生成采购单");
             response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
             return;
         }
-
-        // 选择供应商及供货价：优先用缺书记录里的 SupplierID，否则从 BookSupplier 取第一个，否则报错
-        Integer supplierId = shortage.getSupplierId();
+        
+        // 获取用户输入的数量和供应商
+        String quantityStr = request.getParameter("quantity");
+        String supplierIdStr = request.getParameter("supplierId");
+        
+        if (quantityStr == null || quantityStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "采购数量不能为空");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/createPo?shortageId=" + shortageId);
+            return;
+        }
+        
+        if (supplierIdStr == null || supplierIdStr.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "请选择供应商");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/createPo?shortageId=" + shortageId);
+            return;
+        }
+        
+        int quantity;
+        int supplierId;
+        try {
+            quantity = Integer.parseInt(quantityStr.trim());
+            if (quantity <= 0) {
+                session.setAttribute("errorMessage", "采购数量必须大于0");
+                response.sendRedirect(request.getContextPath() + "/purchase/shortage/createPo?shortageId=" + shortageId);
+                return;
+            }
+            supplierId = Integer.parseInt(supplierIdStr.trim());
+        } catch (NumberFormatException e) {
+            session.setAttribute("errorMessage", "无效的数量或供应商ID");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/createPo?shortageId=" + shortageId);
+            return;
+        }
+        
+        // 获取供应商的供货价
         java.math.BigDecimal supplyPrice = java.math.BigDecimal.ZERO;
         java.util.List<model.BookSupplier> suppliers = bookSupplierDao.findByBookId(shortage.getBookId());
+        boolean supplierFound = false;
         if (suppliers != null && !suppliers.isEmpty()) {
             for (model.BookSupplier bs : suppliers) {
-                if (supplierId == null) {
-                    supplierId = bs.getSupplierId();
+                if (bs.getSupplierId() != null && bs.getSupplierId().equals(supplierId)) {
                     supplyPrice = bs.getSupplyPrice() != null ? bs.getSupplyPrice() : java.math.BigDecimal.ZERO;
-                    break;
-                } else if (bs.getSupplierId().equals(supplierId)) {
-                    supplyPrice = bs.getSupplyPrice() != null ? bs.getSupplyPrice() : java.math.BigDecimal.ZERO;
+                    supplierFound = true;
                     break;
                 }
             }
         }
-        if (supplierId == null) {
-            session.setAttribute("errorMessage", "没有可用的供应商，无法生成采购单");
-            response.sendRedirect(request.getContextPath() + "/purchase/shortage/list");
+        
+        if (!supplierFound) {
+            session.setAttribute("errorMessage", "选择的供应商不提供该图书");
+            response.sendRedirect(request.getContextPath() + "/purchase/shortage/createPo?shortageId=" + shortageId);
             return;
         }
 
         // 计算采购总金额
-        java.math.BigDecimal totalAmount = supplyPrice.multiply(java.math.BigDecimal.valueOf(shortage.getQuantity()));
+        java.math.BigDecimal totalAmount = supplyPrice.multiply(java.math.BigDecimal.valueOf(quantity));
 
         // 构造采购单
         PurchaseOrder order = new PurchaseOrder();
@@ -447,11 +537,11 @@ public class PurchaseServlet extends HttpServlet {
             return;
         }
 
-        // 插入采购明细
+        // 插入采购明细（使用用户输入的数量）
         PurchaseItem item = new PurchaseItem();
         item.setPurchaseOrderId(poId);
         item.setBookId(shortage.getBookId());
-        item.setQuantity(shortage.getQuantity());
+        item.setQuantity(quantity);
         item.setUnitPrice(supplyPrice);
         purchaseItemDao.insert(item);
 

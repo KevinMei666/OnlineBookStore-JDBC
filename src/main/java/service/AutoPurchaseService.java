@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDateTime;
 
 public class AutoPurchaseService {
@@ -49,15 +50,13 @@ public class AutoPurchaseService {
             rs.close();
             rs = null;
 
-            // 若库存已足够，无需生成缺书和采购单
-            if (currentStock >= shortageQuantity) {
-                return;
-            }
+            // 注意：调用此方法时已经确定库存不足，无需再次检查
+            // 直接创建缺书记录和采购单
 
             // 2. 向 ShortageRecord 表插入一条记录（来源标记 AUTO）
             String insertShortageSql = "INSERT INTO ShortageRecord " +
-                    "(BookID, SupplierID, Quantity, Date, SourceType, Processed) " +
-                    "VALUES (?, ?, ?, ?, ?, ?)";
+                    "(BookID, SupplierID, CustomerID, Quantity, Date, SourceType, Processed) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)";
             insertShortagePs = conn.prepareStatement(insertShortageSql, Statement.RETURN_GENERATED_KEYS);
 
             // 3. 自动选择一个 Supplier
@@ -87,20 +86,28 @@ public class AutoPurchaseService {
                 rs = selectAnySupplierPs.executeQuery();
                 if (rs.next()) {
                     supplierId = (Integer) rs.getObject("SupplierID");
-                } else {
-                    throw new SQLException("No supplier available to create purchase order");
                 }
-                rs.close();
+                // 如果没有供应商，仍然创建缺书记录，只是supplierId为null
+                // 这样管理员可以手动选择供应商
+                if (rs != null) {
+                    rs.close();
+                }
                 rs = null;
             }
 
-            // 插入 ShortageRecord
+            // 插入 ShortageRecord（即使没有供应商也创建，supplierId可以为null）
             insertShortagePs.setInt(1, bookId);
-            insertShortagePs.setInt(2, supplierId);
-            insertShortagePs.setInt(3, shortageQuantity);
-            insertShortagePs.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
-            insertShortagePs.setString(5, "AUTO");
-            insertShortagePs.setBoolean(6, false);
+            if (supplierId != null) {
+                insertShortagePs.setInt(2, supplierId);
+            } else {
+                insertShortagePs.setNull(2, Types.INTEGER);
+            }
+            // CustomerID 为 null（订单触发的缺书记录不关联具体客户）
+            insertShortagePs.setNull(3, Types.INTEGER);
+            insertShortagePs.setInt(4, shortageQuantity);
+            insertShortagePs.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
+            insertShortagePs.setString(6, "AUTO");
+            insertShortagePs.setBoolean(7, false);
             insertShortagePs.executeUpdate();
 
             rs = insertShortagePs.getGeneratedKeys();
@@ -111,47 +118,51 @@ public class AutoPurchaseService {
             rs.close();
             rs = null;
 
-            // 4. 创建 PurchaseOrder（状态：CREATED）
-            String insertPoSql = "INSERT INTO PurchaseOrder " +
-                    "(SupplierID, ShortageID, CreateDate, Status, TotalAmount) " +
-                    "VALUES (?, ?, ?, ?, ?)";
-            insertPoPs = conn.prepareStatement(insertPoSql, Statement.RETURN_GENERATED_KEYS);
-            insertPoPs.setInt(1, supplierId);
-            if (shortageId != null) {
-                insertPoPs.setInt(2, shortageId);
-            } else {
-                insertPoPs.setNull(2, java.sql.Types.INTEGER);
+            // 4. 创建 PurchaseOrder（状态：CREATED）- 只有在有供应商时才创建
+            if (supplierId != null) {
+                String insertPoSql = "INSERT INTO PurchaseOrder " +
+                        "(SupplierID, ShortageID, CreateDate, Status, TotalAmount) " +
+                        "VALUES (?, ?, ?, ?, ?)";
+                insertPoPs = conn.prepareStatement(insertPoSql, Statement.RETURN_GENERATED_KEYS);
+                insertPoPs.setInt(1, supplierId);
+                if (shortageId != null) {
+                    insertPoPs.setInt(2, shortageId);
+                } else {
+                    insertPoPs.setNull(2, java.sql.Types.INTEGER);
+                }
+                LocalDateTime now = LocalDateTime.now();
+                insertPoPs.setTimestamp(3, Timestamp.valueOf(now));
+
+                String status = "CREATED";
+                insertPoPs.setString(4, status);
+
+                // 采购单总金额 = 单价 * 数量（若没有供货价，则为 0）
+                BigDecimal totalAmount = supplyPrice.multiply(BigDecimal.valueOf(shortageQuantity));
+                insertPoPs.setBigDecimal(5, totalAmount);
+                insertPoPs.executeUpdate();
+
+                rs = insertPoPs.getGeneratedKeys();
+                int poId;
+                if (rs.next()) {
+                    poId = rs.getInt(1);
+                } else {
+                    throw new SQLException("Failed to retrieve generated PurchaseOrderID");
+                }
+                rs.close();
+                rs = null;
+
+                // 5. 创建 PurchaseItem（数量 = shortageQuantity）
+                String insertItemSql = "INSERT INTO PurchaseItem (POID, BookID, Quantity, UnitPrice) " +
+                        "VALUES (?, ?, ?, ?)";
+                insertItemPs = conn.prepareStatement(insertItemSql);
+                insertItemPs.setInt(1, poId);
+                insertItemPs.setInt(2, bookId);
+                insertItemPs.setInt(3, shortageQuantity);
+                insertItemPs.setBigDecimal(4, supplyPrice);
+                insertItemPs.executeUpdate();
             }
-            LocalDateTime now = LocalDateTime.now();
-            insertPoPs.setTimestamp(3, Timestamp.valueOf(now));
-
-            String status = "CREATED";
-            insertPoPs.setString(4, status);
-
-            // 采购单总金额 = 单价 * 数量（若没有供货价，则为 0）
-            BigDecimal totalAmount = supplyPrice.multiply(BigDecimal.valueOf(shortageQuantity));
-            insertPoPs.setBigDecimal(5, totalAmount);
-            insertPoPs.executeUpdate();
-
-            rs = insertPoPs.getGeneratedKeys();
-            int poId;
-            if (rs.next()) {
-                poId = rs.getInt(1);
-            } else {
-                throw new SQLException("Failed to retrieve generated PurchaseOrderID");
-            }
-            rs.close();
-            rs = null;
-
-            // 5. 创建 PurchaseItem（数量 = shortageQuantity）
-            String insertItemSql = "INSERT INTO PurchaseItem (POID, BookID, Quantity, UnitPrice) " +
-                    "VALUES (?, ?, ?, ?)";
-            insertItemPs = conn.prepareStatement(insertItemSql);
-            insertItemPs.setInt(1, poId);
-            insertItemPs.setInt(2, bookId);
-            insertItemPs.setInt(3, shortageQuantity);
-            insertItemPs.setBigDecimal(4, supplyPrice);
-            insertItemPs.executeUpdate();
+            // 如果没有供应商，只创建缺书记录，不创建采购单
+            // 管理员可以后续手动从缺书记录生成采购单
 
         } finally {
             try {

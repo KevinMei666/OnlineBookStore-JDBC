@@ -211,7 +211,9 @@ public class OrderServlet extends HttpServlet {
             return;
         }
 
-        // 1) 下单前库存校验：若有任意商品缺货，阻止下单并生成缺书记录
+        // 1) 下单前库存校验：检查库存并记录缺货信息，但不阻止下单
+        // 缺书记录将在DAO中通过AutoPurchaseService自动生成
+        List<String> shortageMessages = new ArrayList<>();
         for (CartItem cartItem : cart) {
             Book book = bookDao.findById(cartItem.getBookId());
             if (book == null) {
@@ -222,15 +224,7 @@ public class OrderServlet extends HttpServlet {
             int stock = book.getStockQuantity() == null ? 0 : book.getStockQuantity();
             int required = cartItem.getQuantity();
             if (required > stock) {
-                int shortageQty = required - stock;
-                // 避免重复缺书记录
-                if (!shortageRecordDao.existsUnprocessedByBookId(cartItem.getBookId())) {
-                    createShortageRecord(cartItem.getBookId(), shortageQty, "ORDER");
-                }
-                session.setAttribute("errorMessage",
-                        "库存不足，无法下单（" + book.getTitle() + "，库存 " + stock + "，需要 " + required + "），已生成缺书记录");
-                response.sendRedirect(request.getContextPath() + "/order/checkout");
-                return;
+                shortageMessages.add(book.getTitle() + "（库存 " + stock + "，需要 " + required + "）");
             }
         }
         
@@ -261,8 +255,9 @@ public class OrderServlet extends HttpServlet {
                 orderItems.add(orderItem);
             }
             
-            // 调用DAO创建订单
-            int orderId = ordersDao.createOrderWithItems(customerId, orderItems);
+            // 调用DAO创建订单（传入是否有库存不足的标志）
+            boolean hasShortage = !shortageMessages.isEmpty();
+            int orderId = ordersDao.createOrderWithItems(customerId, orderItems, hasShortage);
             
             if (orderId > 0) {
                 // 更新订单的收货地址
@@ -270,7 +265,15 @@ public class OrderServlet extends HttpServlet {
                 
                 // 清空购物车
                 session.removeAttribute("cart");
-                session.setAttribute("successMessage", "订单创建成功！订单号：" + orderId);
+                
+                // 构建成功消息
+                StringBuilder message = new StringBuilder("订单创建成功！订单号：" + orderId);
+                if (hasShortage) {
+                    message.append("。注意：部分商品库存不足（");
+                    message.append(String.join("、", shortageMessages));
+                    message.append("），已生成缺书记录，订单状态为未付款，待库存补充后可继续支付。");
+                }
+                session.setAttribute("successMessage", message.toString());
                 response.sendRedirect(request.getContextPath() + "/order/list");
             } else {
                 session.setAttribute("errorMessage", "订单创建失败，请重试");

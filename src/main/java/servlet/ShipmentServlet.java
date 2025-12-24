@@ -181,9 +181,11 @@ public class ShipmentServlet extends HttpServlet {
             e.printStackTrace();
             String errorMsg = e.getMessage();
             if (errorMsg != null) {
-                if (errorMsg.contains("余额不足") || errorMsg.contains("Insufficient balance")) {
+                if (errorMsg.contains("库存不足") || errorMsg.contains("Insufficient stock")) {
+                    session.setAttribute("errorMessage", "发货失败：库存不足，无法发货");
+                } else if (errorMsg.contains("余额不足") || errorMsg.contains("Insufficient balance")) {
                     session.setAttribute("errorMessage", "发货失败：客户余额不足");
-                } else if (errorMsg.contains("透支额度") || errorMsg.contains("Monthly limit")) {
+                } else if (errorMsg.contains("透支额度") || errorMsg.contains("Monthly limit") || errorMsg.contains("credit limit")) {
                     session.setAttribute("errorMessage", "发货失败：客户透支额度超限");
                 } else {
                     session.setAttribute("errorMessage", "发货失败：" + errorMsg);
@@ -195,10 +197,16 @@ public class ShipmentServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
             String errorMsg = e.getMessage();
-            if (errorMsg != null && (errorMsg.contains("余额不足") || errorMsg.contains("Insufficient"))) {
-                session.setAttribute("errorMessage", "发货失败：客户余额不足或透支额度超限");
+            if (errorMsg != null) {
+                if (errorMsg.contains("库存不足") || errorMsg.contains("Insufficient stock")) {
+                    session.setAttribute("errorMessage", "发货失败：库存不足，无法发货");
+                } else if (errorMsg.contains("余额不足") || errorMsg.contains("Insufficient")) {
+                    session.setAttribute("errorMessage", "发货失败：客户余额不足或透支额度超限");
+                } else {
+                    session.setAttribute("errorMessage", "发货失败：" + errorMsg);
+                }
             } else {
-                session.setAttribute("errorMessage", "发货失败：" + (errorMsg != null ? errorMsg : "未知错误"));
+                session.setAttribute("errorMessage", "发货失败：未知错误");
             }
             response.sendRedirect(request.getContextPath() + "/shipment/list");
         }

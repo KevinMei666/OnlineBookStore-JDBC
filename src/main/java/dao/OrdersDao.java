@@ -125,6 +125,10 @@ public class OrdersDao {
     }
 
     public int createOrderWithItems(int customerId, List<OrderItem> items) {
+        return createOrderWithItems(customerId, items, false);
+    }
+    
+    public int createOrderWithItems(int customerId, List<OrderItem> items, boolean hasShortage) {
         String insertOrderSql = "INSERT INTO Orders (CustomerID) VALUES (?)";
         String insertItemSql = "INSERT INTO OrderItem (OrderID, BookID, Quantity, UnitPrice) " +
                 "VALUES (?, ?, ?, ?)";
@@ -187,6 +191,7 @@ public class OrdersDao {
 
             AutoPurchaseService autoPurchaseService = new AutoPurchaseService();
             BigDecimal discountedTotal = BigDecimal.ZERO;
+            boolean actualHasShortage = false; // 实际是否有库存不足的商品
 
             for (OrderItem item : items) {
                 // 2.1 使用 FOR UPDATE 锁定图书库存行
@@ -200,32 +205,56 @@ public class OrdersDao {
                 rs = null;
 
                 int requiredQty = item.getQuantity();
+                boolean itemHasShortage = currentStock < requiredQty;
 
                 // 2.2 判断库存是否充足
-                if (currentStock < requiredQty) {
+                if (itemHasShortage) {
+                    actualHasShortage = true;
                     int shortageQty = requiredQty - currentStock;
-                    // 库存不足：只为缺少的部分自动生成缺书记录和采购单，但不抛异常，订单继续创建
-                    autoPurchaseService.handleShortageAndAutoPurchase(conn, item.getBookId(), shortageQty);
-                    // 本次订单中该商品标记为缺货：不插入 OrderItem，也不扣减库存
-                    continue;
+                    // 库存不足：只为缺少的部分自动生成缺书记录和采购单
+                    // 使用 try-catch 确保即使采购单创建失败，缺书记录也能创建
+                    boolean shortageRecordCreated = false;
+                    try {
+                        autoPurchaseService.handleShortageAndAutoPurchase(conn, item.getBookId(), shortageQty);
+                        shortageRecordCreated = true;
+                    } catch (SQLException e) {
+                        // 如果自动创建采购单失败，至少确保缺书记录被创建
+                        // 记录错误但不中断订单创建流程
+                        System.err.println("自动创建采购单失败，尝试直接创建缺书记录: " + e.getMessage());
+                        e.printStackTrace();
+                        // 手动创建缺书记录
+                        try {
+                            createShortageRecordDirectly(conn, item.getBookId(), shortageQty);
+                            shortageRecordCreated = true;
+                        } catch (Exception e2) {
+                            System.err.println("直接创建缺书记录也失败: " + e2.getMessage());
+                            e2.printStackTrace();
+                        }
+                    }
+                    // 如果缺书记录创建失败，记录警告但继续订单创建
+                    if (!shortageRecordCreated) {
+                        System.err.println("警告：缺书记录创建失败，BookID=" + item.getBookId() + ", ShortageQty=" + shortageQty);
+                    }
+                    // 即使库存不足，也插入OrderItem，但不扣减库存
+                    // 这样订单记录完整，但库存不减少，订单状态会设为CREATED
+                } else {
+                    // 2.3 库存充足时扣减库存
+                    updateStockPs.setInt(1, item.getQuantity());
+                    updateStockPs.setInt(2, item.getBookId());
+                    int updated = updateStockPs.executeUpdate();
+                    if (updated != 1) {
+                        throw new SQLException("Failed to update stock for BookID=" + item.getBookId());
+                    }
                 }
 
-                // 2.3 插入订单明细
+                // 2.4 插入订单明细（无论库存是否充足都插入）
                 itemPs.setInt(1, generatedOrderId);
                 itemPs.setInt(2, item.getBookId());
                 itemPs.setInt(3, item.getQuantity());
                 itemPs.setBigDecimal(4, item.getUnitPrice());
                 itemPs.executeUpdate();
 
-                // 2.4 扣减库存
-                updateStockPs.setInt(1, item.getQuantity());
-                updateStockPs.setInt(2, item.getBookId());
-                int updated = updateStockPs.executeUpdate();
-                if (updated != 1) {
-                    throw new SQLException("Failed to update stock for BookID=" + item.getBookId());
-                }
-
-                // 2.5 计算折后金额并累计到订单总额（仅对实际成功加入的明细）
+                // 2.5 计算折后金额并累计到订单总额（包含所有商品，即使库存不足）
                 BigDecimal lineAmount = item.getUnitPrice()
                         .multiply(BigDecimal.valueOf(item.getQuantity()));
                 BigDecimal discountedLine = lineAmount
@@ -271,9 +300,12 @@ public class OrdersDao {
                 }
             }
 
-            // 3.2 如果可以支付，则立即扣款并将订单标记为 PAID；否则只创建为 CREATED，稍后由用户“继续支付”
+            // 3.2 如果可以支付且没有库存不足，则立即扣款并将订单标记为 PAID；否则只创建为 CREATED，稍后由用户"继续支付"
             String finalStatus;
-            if (discountedTotal.compareTo(BigDecimal.ZERO) > 0 && canPayNow) {
+            // 如果有库存不足的商品，订单状态必须为CREATED（未付款）
+            if (actualHasShortage || hasShortage) {
+                finalStatus = "CREATED";
+            } else if (discountedTotal.compareTo(BigDecimal.ZERO) > 0 && canPayNow) {
                 // 扣款
                 updateBalancePs = conn.prepareStatement(updateCustomerBalanceSql);
                 updateBalancePs.setBigDecimal(1, newBalance.setScale(2, RoundingMode.HALF_UP));
@@ -583,6 +615,46 @@ public class OrdersDao {
             DBUtil.closeQuietly(updateBalancePs);
             DBUtil.closeQuietly(updateOrderPs);
             DBUtil.closeQuietly(conn);
+        }
+    }
+
+    /**
+     * 直接创建缺书记录（当自动采购服务失败时的备用方案）
+     */
+    private void createShortageRecordDirectly(Connection conn, int bookId, int shortageQty) {
+        String insertShortageSql = "INSERT INTO ShortageRecord " +
+                "(BookID, SupplierID, CustomerID, Quantity, Date, SourceType, Processed) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        PreparedStatement ps = null;
+        try {
+            ps = conn.prepareStatement(insertShortageSql);
+            ps.setInt(1, bookId);
+            // 尝试查找供应商，如果没有则为null
+            String selectSupplierSql = "SELECT SupplierID FROM BookSupplier WHERE BookID = ? ORDER BY SupplierID LIMIT 1";
+            PreparedStatement selectPs = conn.prepareStatement(selectSupplierSql);
+            selectPs.setInt(1, bookId);
+            ResultSet rs = selectPs.executeQuery();
+            if (rs.next()) {
+                ps.setInt(2, rs.getInt("SupplierID"));
+            } else {
+                ps.setNull(2, java.sql.Types.INTEGER);
+            }
+            rs.close();
+            selectPs.close();
+            
+            // CustomerID 为 null（订单触发的缺书记录不关联具体客户）
+            ps.setNull(3, java.sql.Types.INTEGER);
+            ps.setInt(4, shortageQty);
+            ps.setTimestamp(5, new java.sql.Timestamp(System.currentTimeMillis()));
+            ps.setString(6, "ORDER");
+            ps.setBoolean(7, false);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("创建缺书记录失败: " + e.getMessage());
+            e.printStackTrace();
+            // 不抛出异常，避免影响订单创建
+        } finally {
+            DBUtil.closeQuietly(ps);
         }
     }
 

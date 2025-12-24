@@ -26,6 +26,9 @@ public class AdminSupplierServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        request.setCharacterEncoding("UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("text/html;charset=UTF-8");
         String path = request.getPathInfo();
         if (path == null || "/".equals(path) || "/list".equals(path)) {
             handleList(request, response);
@@ -136,6 +139,9 @@ public class AdminSupplierServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        request.setCharacterEncoding("UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("text/html;charset=UTF-8");
         String path = request.getPathInfo();
         if ("/update".equals(path)) {
             handleUpdate(request, response);
