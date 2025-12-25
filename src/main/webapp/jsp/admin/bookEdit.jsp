@@ -39,6 +39,12 @@
                     </c:if>
 
                     <div class="col-md-6">
+                        <label class="form-label">书号(ISBN) <span class="text-muted small">(可选)</span></label>
+                        <input type="text" class="form-control" name="isbn" value="${book.isbn}" 
+                               placeholder="如：978-7-115-12345-6" maxlength="20">
+                        <small class="form-text text-muted">支持13位或10位ISBN格式</small>
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label">书名</label>
                         <input type="text" class="form-control" name="title" value="${book.title}" required>
                     </div>
@@ -72,6 +78,19 @@
                         <input type="text" class="form-control" name="location" value="${book.location}">
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label">丛书</label>
+                        <select class="form-select" name="seriesId">
+                            <option value="">-- 无丛书 --</option>
+                            <c:forEach var="series" items="${allSeries}">
+                                <option value="${series.seriesId}" 
+                                        ${book.seriesId != null && book.seriesId == series.seriesId ? 'selected' : ''}>
+                                    ${series.seriesName}
+                                </option>
+                            </c:forEach>
+                        </select>
+                        <small class="text-muted">选择该书籍所属的丛书，如果没有则留空</small>
+                    </div>
+                    <div class="col-md-12">
                         <label class="form-label">目录/简介</label>
                         <textarea class="form-control" name="catalog" rows="3">${book.catalog}</textarea>
                     </div>

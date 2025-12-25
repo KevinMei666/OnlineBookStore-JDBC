@@ -29,7 +29,7 @@
         } else if (currentPath.contains("/admin/inventory")) {
             pageTitle = "库存管理";
             pageIcon = "bi-box-seam";
-        } else if (currentPath.contains("/admin/book")) {
+        } else if (currentPath.contains("/admin/book") || currentPath.contains("/admin/series")) {
             pageTitle = "图书管理";
             pageIcon = "bi-journal-bookmark";
         } else if (currentPath.contains("/purchase/shortage")) {
@@ -47,11 +47,17 @@
         } else if (currentPath.contains("/finance")) {
             pageTitle = "财务统计";
             pageIcon = "bi-cash-stack";
+        } else if (currentPath.contains("/inquiry") && isAdmin) {
+            pageTitle = "询价管理";
+            pageIcon = "bi-question-circle";
+        } else if (currentPath.contains("/inquiry")) {
+            pageTitle = "我的询价";
+            pageIcon = "bi-question-circle";
         } else if (currentPath.contains("/admin")) {
             pageTitle = "后台管理";
             pageIcon = "bi-speedometer2";
         } else if (currentPath.contains("/order/cart")) {
-            pageTitle = "下单";
+            pageTitle = "购物车";
             pageIcon = "bi-cart-plus";
         } else if (currentPath.contains("/order")) {
             pageTitle = "订单管理";
@@ -104,7 +110,7 @@
                 <li>
                     <a class="sidebar-link <%= currentPath.contains("/order/cart") ? "active" : "" %>"
                                href="${pageContext.request.contextPath}/order/cart">
-                                <i class="bi bi-cart-plus"></i> 下单
+                                <i class="bi bi-cart-plus"></i> 购物车
                             </a>
                         </li>
                     <% } %>
@@ -123,7 +129,7 @@
             <div class="sidebar-section-title">我的账户</div>
             <ul class="sidebar-nav">
                 <li>
-                    <a class="sidebar-link <%= currentPath.contains("/customer") && !currentPath.contains("/customer/shortage") ? "active" : "" %>"
+                    <a class="sidebar-link <%= (currentPath.startsWith("/customer") && !currentPath.contains("/customer/shortage") && !currentPath.contains("/inquiry")) ? "active" : "" %>"
                            href="${pageContext.request.contextPath}/customer/info">
                             <i class="bi bi-person-square"></i> 用户中心
                         </a>
@@ -132,6 +138,12 @@
                     <a class="sidebar-link <%= currentPath.contains("/customer/shortage") ? "active" : "" %>"
                            href="${pageContext.request.contextPath}/customer/shortage/register">
                             <i class="bi bi-exclamation-triangle"></i> 缺书登记
+                        </a>
+                    </li>
+                <li>
+                    <a class="sidebar-link <%= currentPath.contains("/inquiry") ? "active" : "" %>"
+                           href="${pageContext.request.contextPath}/inquiry">
+                            <i class="bi bi-question-circle"></i> 我的询价
                         </a>
                     </li>
             </ul>
@@ -155,7 +167,7 @@
                             </a>
                         </li>
                 <li>
-                    <a class="sidebar-link <%= currentPath.contains("/admin/book") ? "active" : "" %>"
+                    <a class="sidebar-link <%= currentPath.contains("/admin/book") || currentPath.contains("/admin/series") ? "active" : "" %>"
                                href="${pageContext.request.contextPath}/admin/book/list">
                                 <i class="bi bi-journal-bookmark"></i> 图书管理
                             </a>
@@ -176,6 +188,12 @@
                     <a class="sidebar-link <%= currentPath.contains("/admin/supplier") ? "active" : "" %>"
                                href="${pageContext.request.contextPath}/admin/supplier/list">
                                 <i class="bi bi-building"></i> 供应商管理
+                            </a>
+                        </li>
+                <li>
+                    <a class="sidebar-link <%= currentPath.contains("/inquiry") ? "active" : "" %>"
+                               href="${pageContext.request.contextPath}/inquiry">
+                                <i class="bi bi-question-circle"></i> 询价管理
                             </a>
                         </li>
                 <li>

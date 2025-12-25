@@ -14,9 +14,9 @@ import java.util.List;
 
 public class BookDao {
 
-    private static final String BASE_COLUMNS = "BookID, Title, Publisher, Price, Catalog, CoverImage, " +
+    private static final String BASE_COLUMNS = "BookID, ISBN, Title, Publisher, Price, Catalog, CoverImage, " +
             "StockQuantity, SeriesID, Location, IsActive";
-    private static final String BASE_COLUMNS_WITH_ALIAS = "b.BookID, b.Title, b.Publisher, b.Price, b.Catalog, b.CoverImage, " +
+    private static final String BASE_COLUMNS_WITH_ALIAS = "b.BookID, b.ISBN, b.Title, b.Publisher, b.Price, b.Catalog, b.CoverImage, " +
             "b.StockQuantity, b.SeriesID, b.Location, b.IsActive";
     private static final String ACTIVE_CONDITION = "COALESCE(IsActive, 1) = 1";
 
@@ -49,23 +49,24 @@ public class BookDao {
     }
 
     public int update(Book book) {
-        String sql = "UPDATE Book SET Title = ?, Publisher = ?, Price = ?, Catalog = ?, " +
+        String sql = "UPDATE Book SET ISBN = ?, Title = ?, Publisher = ?, Price = ?, Catalog = ?, " +
                 "CoverImage = ?, StockQuantity = ?, SeriesID = ?, Location = ?, IsActive = ? WHERE BookID = ?";
         Connection conn = null;
         PreparedStatement ps = null;
         try {
             conn = DBUtil.getConnection();
             ps = conn.prepareStatement(sql);
-            ps.setString(1, book.getTitle());
-            ps.setString(2, book.getPublisher());
-            ps.setBigDecimal(3, book.getPrice());
-            ps.setString(4, book.getCatalog());
-            ps.setBytes(5, book.getCoverImage());
-            ps.setObject(6, book.getStockQuantity());
-            ps.setObject(7, book.getSeriesId());
-            ps.setString(8, book.getLocation());
-            ps.setBoolean(9, book.getActive() == null ? true : book.getActive());
-            ps.setObject(10, book.getBookId());
+            ps.setString(1, book.getIsbn());
+            ps.setString(2, book.getTitle());
+            ps.setString(3, book.getPublisher());
+            ps.setBigDecimal(4, book.getPrice());
+            ps.setString(5, book.getCatalog());
+            ps.setBytes(6, book.getCoverImage());
+            ps.setObject(7, book.getStockQuantity());
+            ps.setObject(8, book.getSeriesId());
+            ps.setString(9, book.getLocation());
+            ps.setBoolean(10, book.getActive() == null ? true : book.getActive());
+            ps.setObject(11, book.getBookId());
             return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -349,6 +350,114 @@ public class BookDao {
         return list;
     }
 
+    /**
+     * 多条件组合搜索（支持书名、关键字、作者、出版社、丛书的组合，使用AND逻辑）
+     * @param title 书名（可为空）
+     * @param keyword 关键字（可为空）
+     * @param author 作者（可为空）
+     * @param publisher 出版社（可为空）
+     * @param seriesId 丛书ID（可为空）
+     * @return 符合条件的书籍列表
+     */
+    public List<Book> searchByMultipleConditions(String title, String keyword, String author, String publisher, Integer seriesId, String isbn) {
+        List<String> conditions = new ArrayList<>();
+        List<String> joins = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+        
+        // 基础条件：只查询活跃的书籍
+        String baseCondition = activeCondition("b");
+        
+        // ISBN条件
+        if (isbn != null && !isbn.trim().isEmpty()) {
+            conditions.add("b.ISBN LIKE ?");
+            params.add("%" + isbn.trim() + "%");
+        }
+        
+        // 书名条件
+        if (title != null && !title.trim().isEmpty()) {
+            conditions.add("b.Title LIKE ?");
+            params.add("%" + title.trim() + "%");
+        }
+        
+        // 关键字条件（需要JOIN）
+        boolean needKeywordJoin = false;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            needKeywordJoin = true;
+            conditions.add("k.Word LIKE ?");
+            params.add("%" + keyword.trim() + "%");
+        }
+        
+        // 作者条件（需要JOIN）
+        boolean needAuthorJoin = false;
+        if (author != null && !author.trim().isEmpty()) {
+            needAuthorJoin = true;
+            conditions.add("a.Name LIKE ?");
+            params.add("%" + author.trim() + "%");
+        }
+        
+        // 出版社条件
+        if (publisher != null && !publisher.trim().isEmpty()) {
+            conditions.add("b.Publisher LIKE ?");
+            params.add("%" + publisher.trim() + "%");
+        }
+        
+        // 丛书条件
+        if (seriesId != null) {
+            conditions.add("b.SeriesID = ?");
+            params.add(seriesId);
+        }
+        
+        // 如果没有搜索条件，返回所有书籍
+        if (conditions.isEmpty()) {
+            return findAll();
+        }
+        
+        // 构建JOIN子句
+        if (needKeywordJoin) {
+            joins.add("JOIN BookKeyword bk ON b.BookID = bk.BookID");
+            joins.add("JOIN Keyword k ON bk.KeywordID = k.KeywordID");
+        }
+        if (needAuthorJoin) {
+            joins.add("JOIN BookAuthor ba ON b.BookID = ba.BookID");
+            joins.add("JOIN Author a ON ba.AuthorID = a.AuthorID");
+        }
+        
+        // 构建SQL
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("SELECT DISTINCT ").append(BASE_COLUMNS_WITH_ALIAS);
+        sqlBuilder.append(" FROM Book b");
+        if (!joins.isEmpty()) {
+            sqlBuilder.append(" ").append(String.join(" ", joins));
+        }
+        sqlBuilder.append(" WHERE ").append(baseCondition);
+        for (String condition : conditions) {
+            sqlBuilder.append(" AND ").append(condition);
+        }
+        sqlBuilder.append(" ORDER BY b.BookID");
+        
+        String sql = sqlBuilder.toString();
+        List<Book> list = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return list;
+    }
+
     public List<Author> findAuthorsByBookId(int bookId) {
         BookAuthorDao bookAuthorDao = new BookAuthorDao();
         return bookAuthorDao.findAuthorsByBookId(bookId);
@@ -368,6 +477,32 @@ public class BookDao {
         return keywords;
     }
 
+    /**
+     * 根据丛书ID查询书籍
+     */
+    public List<Book> findBySeriesId(int seriesId) {
+        String sql = "SELECT " + BASE_COLUMNS + " FROM Book WHERE " + ACTIVE_CONDITION + 
+                     " AND SeriesID = ? ORDER BY BookID";
+        List<Book> list = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, seriesId);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeQuietly(rs, ps, conn);
+        }
+        return list;
+    }
+    
     /**
      * 上下架状态切换
      */
@@ -393,6 +528,7 @@ public class BookDao {
     private Book mapRow(ResultSet rs) throws SQLException {
         Book book = new Book();
         book.setBookId((Integer) rs.getObject("BookID"));
+        book.setIsbn(rs.getString("ISBN"));
         book.setTitle(rs.getString("Title"));
         book.setPublisher(rs.getString("Publisher"));
         book.setPrice(rs.getBigDecimal("Price"));

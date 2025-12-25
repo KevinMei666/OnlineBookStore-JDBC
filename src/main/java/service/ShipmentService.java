@@ -20,9 +20,10 @@ public class ShipmentService {
      * @param orderId     订单号
      * @param bookId      发货的图书ID
      * @param shipQuantity 本次发货数量
+     * @param carrier     承运商（可为空，为空时使用默认值）
      * @throws SQLException 如果发货过程中发生数据库错误
      */
-    public void shipOrderItem(int orderId, int bookId, int shipQuantity) throws SQLException {
+    public void shipOrderItem(int orderId, int bookId, int shipQuantity, String carrier) throws SQLException {
         Connection conn = null;
         PreparedStatement selectOrderPs = null;
         PreparedStatement selectCustomerPs = null;
@@ -169,6 +170,13 @@ public class ShipmentService {
             }
 
             // 8. 插入发货记录
+            // 运单号自动生成：TRACK-时间戳
+            String trackingNo = "TRACK-" + System.currentTimeMillis();
+            // 承运商：如果为空或空字符串，使用默认值
+            String finalCarrier = (carrier != null && !carrier.trim().isEmpty()) 
+                    ? carrier.trim() 
+                    : "默认承运商";
+            
             String insertShipmentSql = "INSERT INTO Shipment (OrderID, BookID, Quantity, ShipDate, Carrier, TrackingNo) " +
                     "VALUES (?, ?, ?, ?, ?, ?)";
             insertShipmentPs = conn.prepareStatement(insertShipmentSql);
@@ -176,8 +184,8 @@ public class ShipmentService {
             insertShipmentPs.setInt(2, bookId);
             insertShipmentPs.setInt(3, shipQuantity);
             insertShipmentPs.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
-            insertShipmentPs.setString(5, "DEFAULT_CARRIER");
-            insertShipmentPs.setString(6, "TRACK-" + System.currentTimeMillis());
+            insertShipmentPs.setString(5, finalCarrier);
+            insertShipmentPs.setString(6, trackingNo);
             insertShipmentPs.executeUpdate();
 
             // 9. 判断订单是否全部发完，更新订单状态
@@ -291,7 +299,8 @@ public class ShipmentService {
         int successCount = 0;
         for (ShipmentItem item : shipmentItems) {
             try {
-                shipOrderItem(orderId, item.getBookId(), item.getQuantity());
+                // 批量发货使用默认承运商
+                shipOrderItem(orderId, item.getBookId(), item.getQuantity(), null);
                 successCount++;
             } catch (Exception e) {
                 System.err.println("发货失败: OrderID=" + orderId + ", BookID=" + item.getBookId() + 
@@ -330,7 +339,8 @@ public class ShipmentService {
                 int bookId = rs.getInt("BookID");
                 int remainingQty = rs.getInt("RemainingQty");
                 try {
-                    shipOrderItem(orderId, bookId, remainingQty);
+                    // 批量发货使用默认承运商
+                    shipOrderItem(orderId, bookId, remainingQty, null);
                     successCount++;
                 } catch (Exception e) {
                     System.err.println("发货失败: OrderID=" + orderId + ", BookID=" + bookId + 

@@ -105,6 +105,32 @@
                     </div>
                 </div>
                 
+                <!-- 信用等级说明 -->
+                <div class="card mb-4" style="background-color: #e3f2fd; border: none;">
+                    <div class="card-body">
+                        <h6 class="card-title mb-3">
+                            <i class="bi bi-info-circle"></i> <strong>信用等级说明：</strong>
+                        </h6>
+                        <ul class="mb-0" style="list-style-type: none; padding-left: 0;">
+                            <li class="mb-2">
+                                <strong>1级：</strong> 10%折扣，不可透支。
+                            </li>
+                            <li class="mb-2">
+                                <strong>2级：</strong> 15%折扣，不可透支。
+                            </li>
+                            <li class="mb-2">
+                                <strong>3级：</strong> 15%折扣，可透支，有额度限制。
+                            </li>
+                            <li class="mb-2">
+                                <strong>4级：</strong> 20%折扣，可透支，有额度限制。
+                            </li>
+                            <li class="mb-0">
+                                <strong>5级：</strong> 25%折扣，可透支，无额度限制。
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
                 <!-- 功能操作区域（客户端：仅支持充值，信用等级与透支额度只读展示） -->
                 <div class="card">
                     <div class="card-header">

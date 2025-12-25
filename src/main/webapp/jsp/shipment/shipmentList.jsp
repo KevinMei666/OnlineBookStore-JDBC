@@ -51,11 +51,12 @@
                                         <tr>
                                             <th width="8%">订单ID</th>
                                             <th width="8%">订单状态</th>
-                                            <th width="28%">书名</th>
-                                            <th width="12%">订购数量</th>
-                                            <th width="12%">已发货数量</th>
-                                            <th width="12%">待发货数量</th>
-                                            <th width="20%">操作</th>
+                                            <th width="20%">书名</th>
+                                            <th width="12%">书号(ISBN)</th>
+                                            <th width="10%">订购数量</th>
+                                            <th width="10%">已发货数量</th>
+                                            <th width="10%">待发货数量</th>
+                                            <th width="22%">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -94,6 +95,8 @@
                                             model.Book book = bookDao.findById(bookId);
                                             String bookTitle = book != null && book.getTitle() != null ? 
                                                 book.getTitle() : "未知书名";
+                                            String bookIsbn = book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() ? 
+                                                book.getIsbn() : "-";
                                         %>
                                             <tr>
                                                 <td><strong>#<%= orderId %></strong></td>
@@ -108,6 +111,7 @@
                                                         <%= bookTitle %>
                                                     </a>
                                                 </td>
+                                                <td><%= bookIsbn %></td>
                                                 <td><%= orderQuantity %></td>
                                                 <td>
                                                     <span class="badge bg-info"><%= shippedQuantity %></span>
@@ -182,21 +186,40 @@
                                                                     </small>
                                                                 </div>
                                                                 <div class="mb-3">
-                                                                    <label for="carrier<%= orderId %>_<%= bookId %>" class="form-label">承运商</label>
+                                                                    <label for="carrier<%= orderId %>_<%= bookId %>" class="form-label">承运商 <span class="text-danger">*</span></label>
                                                                     <input type="text" 
                                                                            class="form-control" 
                                                                            id="carrier<%= orderId %>_<%= bookId %>" 
                                                                            name="carrier" 
-                                                                           placeholder="例如：顺丰快递">
+                                                                           placeholder="例如：顺丰快递"
+                                                                           required>
+                                                                    <small class="form-text text-muted">
+                                                                        请输入承运商名称
+                                                                    </small>
                                                                 </div>
                                                                 <div class="mb-3">
-                                                                    <label for="trackingNo<%= orderId %>_<%= bookId %>" class="form-label">运单号</label>
+                                                                    <label for="trackingNo<%= orderId %>_<%= bookId %>" class="form-label">运单号（自动生成）</label>
                                                                     <input type="text" 
                                                                            class="form-control" 
                                                                            id="trackingNo<%= orderId %>_<%= bookId %>" 
                                                                            name="trackingNo" 
-                                                                           placeholder="例如：SF1234567890">
+                                                                           readonly
+                                                                           style="background-color: #e9ecef; cursor: not-allowed;"
+                                                                           value="">
+                                                                    <small class="form-text text-muted">
+                                                                        运单号将自动生成，格式：TRACK-时间戳
+                                                                    </small>
                                                                 </div>
+                                                                <script>
+                                                                    // 自动生成运单号预览
+                                                                    (function() {
+                                                                        var trackingNoInput = document.getElementById('trackingNo<%= orderId %>_<%= bookId %>');
+                                                                        if (trackingNoInput) {
+                                                                            var previewTrackingNo = 'TRACK-' + Date.now();
+                                                                            trackingNoInput.value = previewTrackingNo;
+                                                                        }
+                                                                    })();
+                                                                </script>
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>

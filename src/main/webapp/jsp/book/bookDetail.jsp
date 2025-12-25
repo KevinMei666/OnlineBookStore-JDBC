@@ -5,6 +5,7 @@
 <%@ page import="model.Keyword" %>
 <%@ page import="model.BookSupplier" %>
 <%@ page import="model.Supplier" %>
+<%@ page import="model.Series" %>
 <%@ page import="java.util.List" %>
 <%@ page import="dao.SupplierDao" %>
 <%
@@ -12,6 +13,8 @@
     List<Author> authors = (List<Author>) request.getAttribute("authors");
     List<Keyword> keywords = (List<Keyword>) request.getAttribute("keywords");
     List<BookSupplier> bookSuppliers = (List<BookSupplier>) request.getAttribute("bookSuppliers");
+    Series series = (Series) request.getAttribute("series");
+    List<Book> sameSeriesBooks = (List<Book>) request.getAttribute("sameSeriesBooks");
     String currentRole = (String) session.getAttribute("currentRole");
     boolean isAdmin = "ADMIN".equals(currentRole);
     
@@ -28,6 +31,9 @@
     }
     if (bookSuppliers == null) {
         bookSuppliers = new java.util.ArrayList<>();
+    }
+    if (sameSeriesBooks == null) {
+        sameSeriesBooks = new java.util.ArrayList<>();
     }
     
     SupplierDao supplierDao = new SupplierDao();
@@ -91,6 +97,16 @@
                                                 <i class="bi bi-person"></i> <%= authors.get(i).getName() %>
                                             </span>
                                         <% } %>
+                                    </div>
+                                <% } %>
+                                
+                                <!-- 书号(ISBN) -->
+                                <% if (book.getIsbn() != null && !book.getIsbn().isEmpty()) { %>
+                                    <div class="mb-3">
+                                        <h5 class="d-inline">书号(ISBN)：</h5>
+                                        <span class="text-muted">
+                                            <i class="bi bi-upc-scan"></i> <%= book.getIsbn() %>
+                                        </span>
                                     </div>
                                 <% } %>
                                 
@@ -221,11 +237,24 @@
                                             </div>
                                             <div class="card-body">
                                                 <p class="mb-2">
-                                                    <strong>书籍ID：</strong> <%= book.getBookId() %>
+                                                    <strong>序号：</strong> <%= book.getBookId() %>
                                                 </p>
-                                                <% if (book.getSeriesId() != null) { %>
+                                                <% if (book.getSeriesId() != null && series != null) { %>
                                                     <p class="mb-2">
-                                                        <strong>系列ID：</strong> <%= book.getSeriesId() %>
+                                                        <strong>丛书：</strong> 
+                                                        <a href="${pageContext.request.contextPath}/book?seriesId=<%= series.getSeriesId() %>" 
+                                                           class="text-decoration-none">
+                                                            <%= series.getSeriesName() %>
+                                                        </a>
+                                                    </p>
+                                                    <% if (series.getDescription() != null && !series.getDescription().trim().isEmpty()) { %>
+                                                        <p class="mb-2 text-muted small">
+                                                            <%= series.getDescription() %>
+                                                        </p>
+                                                    <% } %>
+                                                <% } else if (book.getSeriesId() != null) { %>
+                                                    <p class="mb-2">
+                                                        <strong>丛书ID：</strong> <%= book.getSeriesId() %>
                                                     </p>
                                                 <% } %>
                                                 <% if (book.getLocation() != null && !book.getLocation().isEmpty()) { %>

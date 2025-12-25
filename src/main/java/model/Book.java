@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public class Book {
 
     private Integer bookId;
+    private String isbn;
     private String title;
     private String publisher;
     private BigDecimal price;
@@ -110,6 +111,14 @@ public class Book {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public String getIsbn() {
+        return isbn;
+    }
+
+    public void setIsbn(String isbn) {
+        this.isbn = isbn;
     }
 }
 

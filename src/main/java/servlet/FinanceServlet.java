@@ -97,6 +97,13 @@ public class FinanceServlet extends HttpServlet {
         // 计算盈利数据
         List<Map<String, Object>> profit = calculateProfit(expenses, revenue, period);
         
+        // 如果是按日统计，填充所有日期（包括没有数据的日期）
+        if ("day".equals(period.toLowerCase())) {
+            expenses = fillMissingDates(expenses, startDate, endDate);
+            revenue = fillMissingDates(revenue, startDate, endDate);
+            profit = calculateProfit(expenses, revenue, period);
+        }
+        
         // 计算总计
         BigDecimal totalExpenses = financeDao.getTotalExpenses();
         BigDecimal totalRevenue = financeDao.getTotalRevenue();
@@ -162,6 +169,44 @@ public class FinanceServlet extends HttpServlet {
         }
         
         return profit;
+    }
+    
+    /**
+     * 填充缺失的日期，确保日期范围内的每一天都有数据（没有数据的日期金额为0）
+     * @param dataList 原始数据列表
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 填充后的数据列表
+     */
+    private List<Map<String, Object>> fillMissingDates(
+            List<Map<String, Object>> dataList, 
+            String startDate, 
+            String endDate) {
+        
+        // 创建日期到金额的映射
+        Map<String, BigDecimal> dataMap = new java.util.HashMap<>();
+        for (Map<String, Object> item : dataList) {
+            String date = (String) item.get("date");
+            BigDecimal amount = (BigDecimal) item.get("amount");
+            dataMap.put(date, amount != null ? amount : BigDecimal.ZERO);
+        }
+        
+        // 生成完整的日期列表
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        List<Map<String, Object>> filledList = new java.util.ArrayList<>();
+        
+        LocalDate current = start;
+        while (!current.isAfter(end)) {
+            String dateStr = current.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            Map<String, Object> item = new java.util.HashMap<>();
+            item.put("date", dateStr);
+            item.put("amount", dataMap.getOrDefault(dateStr, BigDecimal.ZERO));
+            filledList.add(item);
+            current = current.plusDays(1);
+        }
+        
+        return filledList;
     }
 }
 

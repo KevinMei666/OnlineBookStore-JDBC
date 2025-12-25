@@ -95,12 +95,13 @@
                                     <thead>
                                         <tr>
                                             <th width="8%">缺书ID</th>
-                                            <th width="25%">书名</th>
-                                            <th width="15%">供应商</th>
-                                            <th width="12%">缺货数量</th>
-                                            <th width="18%">记录时间</th>
-                                            <th width="12%">处理状态</th>
-                                            <th width="10%">操作</th>
+                                            <th width="20%">书名</th>
+                                            <th width="12%">书号(ISBN)</th>
+                                            <th width="12%">供应商</th>
+                                            <th width="10%">缺货数量</th>
+                                            <th width="15%">记录时间</th>
+                                            <th width="10%">处理状态</th>
+                                            <th width="13%">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -108,6 +109,8 @@
                                             model.Book book = bookDao.findById(record.getBookId() != null ? record.getBookId() : 0);
                                             String bookTitle = book != null && book.getTitle() != null ? 
                                                 book.getTitle() : "未知书名";
+                                            String bookIsbn = book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() ? 
+                                                book.getIsbn() : "-";
                                             
                                             model.Supplier supplier = null;
                                             if (record.getSupplierId() != null) {
@@ -127,6 +130,7 @@
                                                         <%= bookTitle %>
                                                     </a>
                                                 </td>
+                                                <td><%= bookIsbn %></td>
                                                 <td><%= supplierName %></td>
                                                 <td>
                                                     <span class="badge bg-danger">
@@ -150,10 +154,10 @@
                                                         <i class="bi bi-eye"></i> 查看
                                                     </a>
                                                     <a href="${pageContext.request.contextPath}/purchase/shortage/createPo?shortageId=<%= record.getShortageId() %>"
-                                                       class="btn btn-sm btn-success"
+                                                                class="btn btn-sm btn-success"
                                                        style="white-space: nowrap;"
                                                        <%= isProcessed ? "onclick=\"return false;\" style=\"pointer-events: none; opacity: 0.5;\"" : "" %>>
-                                                        <i class="bi bi-box-seam"></i> 生成采购单
+                                                            <i class="bi bi-box-seam"></i> 生成采购单
                                                     </a>
                                                     </div>
                                                 </td>

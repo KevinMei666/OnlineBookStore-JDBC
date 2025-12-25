@@ -5,10 +5,18 @@
 <%@ page import="model.Author" %>
 <%@ page import="model.Keyword" %>
 <%@ page import="dao.BookDao" %>
+<%@ page import="dao.SeriesDao" %>
+<%@ page import="model.Series" %>
 <%
     List<Book> books = (List<Book>) request.getAttribute("books");
     String searchType = (String) request.getAttribute("searchType");
     String searchKeyword = (String) request.getAttribute("searchKeyword");
+    String searchTitle = (String) request.getAttribute("searchTitle");
+    String searchKeywordParam = (String) request.getAttribute("searchKeywordParam");
+    String searchAuthor = (String) request.getAttribute("searchAuthor");
+    String searchPublisher = (String) request.getAttribute("searchPublisher");
+    String searchSeriesId = (String) request.getAttribute("searchSeriesId");
+    List<Series> allSeries = (List<Series>) request.getAttribute("allSeries");
     String currentRole = (String) session.getAttribute("currentRole");
     boolean isAdmin = "ADMIN".equals(currentRole);
     
@@ -21,8 +29,12 @@
     if (searchKeyword == null) {
         searchKeyword = "";
     }
+    if (allSeries == null) {
+        allSeries = new java.util.ArrayList<>();
+    }
     
     BookDao bookDao = new BookDao();
+    SeriesDao seriesDao = new SeriesDao();
 %>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -53,28 +65,48 @@
                         <form action="${pageContext.request.contextPath}/book" method="GET">
                             <div class="row g-3">
                                 <div class="col-md-3">
+                                    <label for="isbn" class="form-label">书号(ISBN)</label>
+                                    <input type="text" class="form-control" id="isbn" name="isbn" 
+                                           value="<%= request.getAttribute("searchIsbn") != null ? request.getAttribute("searchIsbn") : "" %>" 
+                                           placeholder="输入书号(ISBN)">
+                                </div>
+                                <div class="col-md-3">
                                     <label for="title" class="form-label">书名</label>
                                     <input type="text" class="form-control" id="title" name="title" 
-                                           value="<%= "title".equals(searchType) ? searchKeyword : "" %>" 
+                                           value="<%= searchTitle != null ? searchTitle : "" %>" 
                                            placeholder="输入书名">
                                 </div>
                                 <div class="col-md-3">
                                     <label for="keyword" class="form-label">关键字</label>
                                     <input type="text" class="form-control" id="keyword" name="keyword" 
-                                           value="<%= "keyword".equals(searchType) ? searchKeyword : "" %>" 
+                                           value="<%= searchKeywordParam != null ? searchKeywordParam : "" %>" 
                                            placeholder="输入关键字">
                                 </div>
                                 <div class="col-md-3">
                                     <label for="author" class="form-label">作者</label>
                                     <input type="text" class="form-control" id="author" name="author" 
-                                           value="<%= "author".equals(searchType) ? searchKeyword : "" %>" 
+                                           value="<%= searchAuthor != null ? searchAuthor : "" %>" 
                                            placeholder="输入作者名">
                                 </div>
+                            </div>
+                            <div class="row g-3 mt-1">
                                 <div class="col-md-3">
                                     <label for="publisher" class="form-label">出版社</label>
                                     <input type="text" class="form-control" id="publisher" name="publisher" 
-                                           value="<%= "publisher".equals(searchType) ? searchKeyword : "" %>" 
+                                           value="<%= searchPublisher != null ? searchPublisher : "" %>" 
                                            placeholder="输入出版社">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="seriesId" class="form-label">丛书</label>
+                                    <select class="form-select" id="seriesId" name="seriesId">
+                                        <option value="">-- 选择丛书 --</option>
+                                        <% for (Series series : allSeries) { %>
+                                            <option value="<%= series.getSeriesId() %>" 
+                                                    <%= (searchSeriesId != null && searchSeriesId.equals(String.valueOf(series.getSeriesId()))) ? "selected" : "" %>>
+                                                <%= series.getSeriesName() %>
+                                            </option>
+                                        <% } %>
+                                    </select>
                                 </div>
                             </div>
                             <div class="row mt-3">
@@ -101,12 +133,24 @@
                         <% if (books.isEmpty()) { %>
                             <div class="alert alert-info text-center">
                                 <i class="bi bi-info-circle"></i> 暂无书籍数据，请尝试其他搜索条件
+                                <hr>
+                                <p class="mb-3">未找到您要的书籍？</p>
+                                <p class="text-muted mb-3">我们可以为您询价并报价，请点击下方按钮提交询价请求</p>
+                                <a href="${pageContext.request.contextPath}/inquiry/create?title=<%= searchTitle != null ? java.net.URLEncoder.encode(searchTitle, "UTF-8") : "" %>&author=<%= searchAuthor != null ? java.net.URLEncoder.encode(searchAuthor, "UTF-8") : "" %>&publisher=<%= searchPublisher != null ? java.net.URLEncoder.encode(searchPublisher, "UTF-8") : "" %>" 
+                                   class="btn btn-primary">
+                                    <i class="bi bi-question-circle"></i> 提交询价请求
+                                </a>
                             </div>
                         <% } else { %>
                             <div class="row g-4">
                                 <% for (Book book : books) { 
                                     List<Author> authors = bookDao.findAuthorsByBookId(book.getBookId());
                                     List<Keyword> keywords = bookDao.findKeywordsByBookId(book.getBookId());
+                                    // 获取丛书信息
+                                    Series series = null;
+                                    if (book.getSeriesId() != null) {
+                                        series = seriesDao.findById(book.getSeriesId());
+                                    }
                                 %>
                                     <div class="col-md-6 col-lg-4">
                                         <div class="card h-100 shadow-sm border-0 book-card">
@@ -134,6 +178,13 @@
                                                     </a>
                                                 </h5>
                                                 
+                                                <!-- 书号(ISBN) -->
+                                                <% if (book.getIsbn() != null && !book.getIsbn().isEmpty()) { %>
+                                                    <p class="card-text text-muted small mb-2">
+                                                        <i class="bi bi-upc-scan"></i> 书号(ISBN)：<%= book.getIsbn() %>
+                                                    </p>
+                                                <% } %>
+                                                
                                                 <!-- 作者 -->
                                                 <% if (authors != null && !authors.isEmpty()) { %>
                                                     <p class="card-text text-muted small mb-2">
@@ -148,6 +199,17 @@
                                                 <% if (book.getPublisher() != null && !book.getPublisher().isEmpty()) { %>
                                                     <p class="card-text text-muted small mb-2">
                                                         <i class="bi bi-building"></i> 出版社：<%= book.getPublisher() %>
+                                                    </p>
+                                                <% } %>
+                                                
+                                                <!-- 丛书 -->
+                                                <% if (series != null) { %>
+                                                    <p class="card-text text-muted small mb-2">
+                                                        <i class="bi bi-collection"></i> 丛书：
+                                                        <a href="${pageContext.request.contextPath}/book?seriesId=<%= series.getSeriesId() %>" 
+                                                           class="text-decoration-none text-primary">
+                                                            <%= series.getSeriesName() %>
+                                                        </a>
                                                     </p>
                                                 <% } %>
                                                 

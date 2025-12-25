@@ -1,7 +1,9 @@
 package servlet;
 
 import dao.BookDao;
+import dao.SeriesDao;
 import model.Book;
+import model.Series;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -90,10 +92,78 @@ public class BookServlet extends HttpServlet {
             books = bookDao.findAll();
         }
         
+        // 获取丛书ID参数
+        String seriesIdStr = request.getParameter("seriesId");
+        Integer seriesId = null;
+        try {
+            if (seriesIdStr != null && !seriesIdStr.trim().isEmpty()) {
+                seriesId = Integer.parseInt(seriesIdStr.trim());
+            }
+        } catch (NumberFormatException e) {
+            // 忽略无效的seriesId
+        }
+        
+        // 获取ISBN参数
+        String isbn = request.getParameter("isbn");
+        
+        // 始终使用多条件组合搜索（支持同时使用多个条件）
+        boolean hasAnyCondition = 
+                (title != null && !title.trim().isEmpty() ? 1 : 0) +
+                (keyword != null && !keyword.trim().isEmpty() ? 1 : 0) +
+                (author != null && !author.trim().isEmpty() ? 1 : 0) +
+                (publisher != null && !publisher.trim().isEmpty() ? 1 : 0) +
+                (seriesId != null ? 1 : 0) +
+                (isbn != null && !isbn.trim().isEmpty() ? 1 : 0) > 0;
+        
+        if (hasAnyCondition) {
+            // 使用多条件组合搜索（所有条件使用AND逻辑）
+            books = bookDao.searchByMultipleConditions(
+                    title != null ? title.trim() : null,
+                    keyword != null ? keyword.trim() : null,
+                    author != null ? author.trim() : null,
+                    publisher != null ? publisher.trim() : null,
+                    seriesId,
+                    isbn != null ? isbn.trim() : null
+            );
+        } else {
+            // 如果没有搜索条件，显示所有书籍
+            books = bookDao.findAll();
+        }
+        
+        // 构建搜索类型和关键字（用于显示）
+        if (title != null && !title.trim().isEmpty()) {
+            searchType = "title";
+            searchKeyword = title.trim();
+        } else if (keyword != null && !keyword.trim().isEmpty()) {
+            searchType = "keyword";
+            searchKeyword = keyword.trim();
+        } else if (author != null && !author.trim().isEmpty()) {
+            searchType = "author";
+            searchKeyword = author.trim();
+        } else if (publisher != null && !publisher.trim().isEmpty()) {
+            searchType = "publisher";
+            searchKeyword = publisher.trim();
+        } else if (seriesId != null) {
+            searchType = "series";
+            searchKeyword = seriesIdStr;
+        }
+        
         // 将结果存入request
         request.setAttribute("books", books);
         request.setAttribute("searchType", searchType);
         request.setAttribute("searchKeyword", searchKeyword);
+        // 传递所有搜索参数，以便在JSP中回显
+        request.setAttribute("searchTitle", title);
+        request.setAttribute("searchKeywordParam", keyword);
+        request.setAttribute("searchAuthor", author);
+        request.setAttribute("searchPublisher", publisher);
+        request.setAttribute("searchSeriesId", seriesIdStr);
+        String isbnParam = request.getParameter("isbn");
+        request.setAttribute("searchIsbn", isbnParam);
+        
+        // 加载所有丛书列表，用于搜索页面的下拉选择
+        SeriesDao seriesDao = new SeriesDao();
+        request.setAttribute("allSeries", seriesDao.findAll());
         
         // 转发到bookList.jsp
         request.getRequestDispatcher("/jsp/book/bookList.jsp").forward(request, response);
@@ -129,6 +199,19 @@ public class BookServlet extends HttpServlet {
             // 获取供应商信息
             dao.BookSupplierDao bookSupplierDao = new dao.BookSupplierDao();
             List<model.BookSupplier> bookSuppliers = bookSupplierDao.findByBookId(bookId);
+            
+            // 获取丛书信息
+            if (book.getSeriesId() != null) {
+                SeriesDao seriesDao = new SeriesDao();
+                Series series = seriesDao.findById(book.getSeriesId());
+                request.setAttribute("series", series);
+                
+                // 获取同丛书的其他书籍
+                List<Book> sameSeriesBooks = bookDao.findBySeriesId(book.getSeriesId());
+                // 排除当前书籍
+                sameSeriesBooks.removeIf(b -> b.getBookId().equals(book.getBookId()));
+                request.setAttribute("sameSeriesBooks", sameSeriesBooks);
+            }
             
             request.setAttribute("book", book);
             request.setAttribute("authors", authors);

@@ -1,6 +1,7 @@
 package servlet;
 
 import dao.BookDao;
+import dao.SeriesDao;
 import model.Book;
 
 import javax.servlet.ServletException;
@@ -66,6 +67,9 @@ public class AdminBookServlet extends HttpServlet {
         if (bookIdStr == null || bookIdStr.trim().isEmpty()) {
             request.setAttribute("book", new Book());
             request.setAttribute("isNew", true);
+            // 加载所有丛书列表
+            SeriesDao seriesDao = new SeriesDao();
+            request.setAttribute("allSeries", seriesDao.findAll());
             request.getRequestDispatcher("/jsp/admin/bookEdit.jsp").forward(request, response);
             return; // 兼容缺少bookId时也能进入新增
         }
@@ -77,6 +81,9 @@ public class AdminBookServlet extends HttpServlet {
                 response.sendRedirect(request.getContextPath() + "/admin/book/list");
                 return;
             }
+            // 加载所有丛书列表
+            SeriesDao seriesDao = new SeriesDao();
+            request.setAttribute("allSeries", seriesDao.findAll());
             request.setAttribute("book", book);
             request.getRequestDispatcher("/jsp/admin/bookEdit.jsp").forward(request, response);
         } catch (NumberFormatException e) {
@@ -89,6 +96,9 @@ public class AdminBookServlet extends HttpServlet {
         // 提供空白实体，沿用同一表单
         Book book = new Book();
         book.setActive(true);
+        // 加载所有丛书列表
+        SeriesDao seriesDao = new SeriesDao();
+        request.setAttribute("allSeries", seriesDao.findAll());
         request.setAttribute("book", book);
         request.setAttribute("isNew", true);
         request.getRequestDispatcher("/jsp/admin/bookEdit.jsp").forward(request, response);
@@ -113,6 +123,7 @@ public class AdminBookServlet extends HttpServlet {
             }
 
             // 基础字段
+            book.setIsbn(request.getParameter("isbn"));
             book.setTitle(request.getParameter("title"));
             book.setPublisher(request.getParameter("publisher"));
             book.setCatalog(request.getParameter("catalog"));
@@ -129,6 +140,18 @@ public class AdminBookServlet extends HttpServlet {
                 book.setStockQuantity(Integer.parseInt(stockStr.trim()));
             } else {
                 book.setStockQuantity(null);
+            }
+            
+            // 丛书ID
+            String seriesIdStr = request.getParameter("seriesId");
+            if (seriesIdStr != null && !seriesIdStr.trim().isEmpty()) {
+                try {
+                    book.setSeriesId(Integer.parseInt(seriesIdStr.trim()));
+                } catch (NumberFormatException e) {
+                    book.setSeriesId(null);
+                }
+            } else {
+                book.setSeriesId(null);
             }
 
             // 上下架状态

@@ -1,6 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="java.util.Base64" %>
+<%@ page import="dao.SeriesDao" %>
+<%@ page import="model.Series" %>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -21,9 +23,12 @@
                     <h2 class="h5 mb-1">图书上架/下架</h2>
                     <p class="text-muted small mb-0">仅影响前台可见性，不删除库存与历史记录。</p>
                 </div>
-                <div>
+                <div class="btn-group" role="group">
                     <a class="btn btn-primary btn-sm" href="${pageContext.request.contextPath}/admin/book/create">
                         <i class="bi bi-plus-circle"></i> 新增图书
+                    </a>
+                    <a class="btn btn-outline-primary btn-sm" href="${pageContext.request.contextPath}/admin/series/list">
+                        <i class="bi bi-collection"></i> 丛书管理
                     </a>
                 </div>
             </div>
@@ -32,10 +37,12 @@
                 <table class="table table-striped table-hover table-bordered align-middle table-modern">
                     <thead class="table-light">
                     <tr>
-                        <th scope="col">书号</th>
+                        <th scope="col">序号</th>
+                        <th scope="col">书号(ISBN)</th>
                         <th scope="col">书名</th>
                         <th scope="col">封面</th>
                         <th scope="col">出版社</th>
+                        <th scope="col">丛书</th>
                         <th scope="col">价格</th>
                         <th scope="col">库存量</th>
                         <th scope="col">状态</th>
@@ -57,6 +64,16 @@
                         %>
                         <tr>
                             <td>${b.bookId}</td>
+                            <td>
+                                <c:choose>
+                                    <c:when test="${not empty b.isbn}">
+                                        <span class="text-muted small">${b.isbn}</span>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <span class="text-muted small">-</span>
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
                             <td>${b.title}</td>
                             <td style="width: 120px;">
                                 <%
@@ -74,6 +91,31 @@
                                 %>
                             </td>
                             <td>${b.publisher}</td>
+                            <td>
+                                <%
+                                    model.Book book = (model.Book) pageContext.getAttribute("b");
+                                    if (book.getSeriesId() != null) {
+                                        SeriesDao seriesDao = new SeriesDao();
+                                        Series series = seriesDao.findById(book.getSeriesId());
+                                        if (series != null) {
+                                %>
+                                    <a href="${pageContext.request.contextPath}/admin/series/edit?seriesId=<%= series.getSeriesId() %>" 
+                                       class="text-decoration-none">
+                                        <i class="bi bi-collection"></i> <%= series.getSeriesName() %>
+                                    </a>
+                                <%
+                                        } else {
+                                %>
+                                    <span class="text-muted small">ID: <%= book.getSeriesId() %></span>
+                                <%
+                                        }
+                                    } else {
+                                %>
+                                    <span class="text-muted small">-</span>
+                                <%
+                                    }
+                                %>
+                            </td>
                             <td>¥ ${b.price}</td>
                             <td>${b.stockQuantity}</td>
                             <td>

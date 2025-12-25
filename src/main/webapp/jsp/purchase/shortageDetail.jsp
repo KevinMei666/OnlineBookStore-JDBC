@@ -90,6 +90,10 @@
                                     </a>
                                 </p>
                                 <p class="mb-2">
+                                    <strong>书号(ISBN)：</strong> 
+                                    <%= book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() ? book.getIsbn() : "-" %>
+                                </p>
+                                <p class="mb-2">
                                     <strong>供应商：</strong> <%= supplierName %>
                                 </p>
                                 <p class="mb-2">

@@ -326,6 +326,37 @@ public class CustomerDao {
         }
     }
 
+    /**
+     * 更新客户密码
+     * 
+     * @param customerId 客户ID
+     * @param newPasswordHash 新密码（当前系统为明文存储；如需改为加密请在此处调整）
+     * @return 成功返回1，失败返回0
+     */
+    public int updatePassword(int customerId, String newPasswordHash) {
+        if (newPasswordHash == null || newPasswordHash.trim().isEmpty()) {
+            System.err.println("新密码不能为空");
+            return 0;
+        }
+        
+        String sql = "UPDATE Customer SET PasswordHash = ? WHERE CustomerID = ?";
+        Connection conn = null;
+        PreparedStatement ps = null;
+        try {
+            conn = DBUtil.getConnection();
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, newPasswordHash.trim());
+            ps.setInt(2, customerId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            DBUtil.closeQuietly(ps);
+            DBUtil.closeQuietly(conn);
+        }
+    }
+
     private Customer mapRow(ResultSet rs) throws SQLException {
         Customer customer = new Customer();
         customer.setCustomerId((Integer) rs.getObject("CustomerID"));

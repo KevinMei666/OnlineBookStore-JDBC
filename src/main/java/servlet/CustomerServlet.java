@@ -71,6 +71,9 @@ public class CustomerServlet extends HttpServlet {
         } else if (pathInfo.equals("/updateProfile")) {
             // 更新个人资料
             handleUpdateProfile(request, response);
+        } else if (pathInfo.equals("/changePassword")) {
+            // 修改密码
+            handleChangePassword(request, response);
         } else if (pathInfo.equals("/updateCredit")) {
             // 调整信用等级或透支额度
             handleUpdateCredit(request, response);
@@ -257,6 +260,9 @@ public class CustomerServlet extends HttpServlet {
         String name = request.getParameter("name");
         String email = request.getParameter("email");
         String address = request.getParameter("address");
+        String oldPassword = request.getParameter("oldPassword");
+        String newPassword = request.getParameter("newPassword");
+        String confirmPassword = request.getParameter("confirmPassword");
 
         if (email == null || email.trim().isEmpty()) {
             session.setAttribute("errorMessage", "邮箱不能为空");
@@ -264,6 +270,67 @@ public class CustomerServlet extends HttpServlet {
             return;
         }
 
+        // 如果用户填写了密码字段，需要验证并更新密码
+        boolean needUpdatePassword = (oldPassword != null && !oldPassword.trim().isEmpty()) ||
+                                     (newPassword != null && !newPassword.trim().isEmpty()) ||
+                                     (confirmPassword != null && !confirmPassword.trim().isEmpty());
+
+        if (needUpdatePassword) {
+            // 验证密码字段是否都填写
+            if (oldPassword == null || oldPassword.trim().isEmpty() ||
+                newPassword == null || newPassword.trim().isEmpty() ||
+                confirmPassword == null || confirmPassword.trim().isEmpty()) {
+                session.setAttribute("errorMessage", "修改密码时，当前密码、新密码和确认密码都必须填写");
+                response.sendRedirect(request.getContextPath() + "/customer/profile");
+                return;
+            }
+
+            // 验证新密码长度
+            if (newPassword.trim().length() < 6) {
+                session.setAttribute("errorMessage", "新密码长度至少为6位");
+                response.sendRedirect(request.getContextPath() + "/customer/profile");
+                return;
+            }
+
+            // 验证两次输入的新密码是否一致
+            if (!newPassword.trim().equals(confirmPassword.trim())) {
+                session.setAttribute("errorMessage", "两次输入的新密码不一致");
+                response.sendRedirect(request.getContextPath() + "/customer/profile");
+                return;
+            }
+
+            // 验证旧密码
+            Customer customer = customerDao.findById(customerId);
+            if (customer == null) {
+                session.setAttribute("errorMessage", "客户信息不存在");
+                response.sendRedirect(request.getContextPath() + "/customer/profile");
+                return;
+            }
+
+            // 当前系统为明文存储，直接比较
+            if (!oldPassword.trim().equals(customer.getPasswordHash())) {
+                session.setAttribute("errorMessage", "当前密码错误");
+                response.sendRedirect(request.getContextPath() + "/customer/profile");
+                return;
+            }
+
+            // 检查新密码是否与旧密码相同
+            if (newPassword.trim().equals(oldPassword.trim())) {
+                session.setAttribute("errorMessage", "新密码不能与当前密码相同");
+                response.sendRedirect(request.getContextPath() + "/customer/profile");
+                return;
+            }
+
+            // 更新密码
+            int passwordResult = customerDao.updatePassword(customerId, newPassword.trim());
+            if (passwordResult <= 0) {
+                session.setAttribute("errorMessage", "密码修改失败，请重试");
+                response.sendRedirect(request.getContextPath() + "/customer/profile");
+                return;
+            }
+        }
+
+        // 更新基本信息
         int result = customerDao.updateBasicInfo(customerId,
                 name != null ? name.trim() : null,
                 email.trim(),
@@ -274,9 +341,96 @@ public class CustomerServlet extends HttpServlet {
             Customer updated = customerDao.findById(customerId);
             session.setAttribute("currentCustomer", updated);
             session.setAttribute("currentUser", updated.getName() != null ? updated.getName() : updated.getEmail());
-            session.setAttribute("successMessage", "个人信息已更新");
+            if (needUpdatePassword) {
+                session.setAttribute("successMessage", "个人信息和密码已更新");
+            } else {
+                session.setAttribute("successMessage", "个人信息已更新");
+            }
         } else {
             session.setAttribute("errorMessage", "个人信息更新失败，请重试");
+        }
+
+        response.sendRedirect(request.getContextPath() + "/customer/profile");
+    }
+
+    /**
+     * 处理客户密码修改
+     */
+    private void handleChangePassword(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        HttpSession session = request.getSession();
+        String currentRole = (String) session.getAttribute("currentRole");
+        if (!"CUSTOMER".equals(currentRole)) {
+            session.setAttribute("warningMessage", "请以客户身份登录后再操作");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        Integer customerId = (Integer) session.getAttribute("currentCustomerId");
+        if (customerId == null) {
+            session.setAttribute("warningMessage", "登录已失效，请重新登录后再试");
+            response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
+            return;
+        }
+
+        String oldPassword = request.getParameter("oldPassword");
+        String newPassword = request.getParameter("newPassword");
+        String confirmPassword = request.getParameter("confirmPassword");
+
+        // 验证输入
+        if (oldPassword == null || oldPassword.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "请输入当前密码");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            session.setAttribute("errorMessage", "请输入新密码");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        if (newPassword.length() < 6) {
+            session.setAttribute("errorMessage", "新密码长度至少为6位");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            session.setAttribute("errorMessage", "两次输入的新密码不一致");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        // 验证旧密码
+        Customer customer = customerDao.findById(customerId);
+        if (customer == null) {
+            session.setAttribute("errorMessage", "客户信息不存在");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        // 当前系统为明文存储，直接比较
+        if (!oldPassword.trim().equals(customer.getPasswordHash())) {
+            session.setAttribute("errorMessage", "当前密码错误");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        // 检查新密码是否与旧密码相同
+        if (newPassword.trim().equals(oldPassword.trim())) {
+            session.setAttribute("errorMessage", "新密码不能与当前密码相同");
+            response.sendRedirect(request.getContextPath() + "/customer/profile");
+            return;
+        }
+
+        // 更新密码
+        int result = customerDao.updatePassword(customerId, newPassword.trim());
+        if (result > 0) {
+            session.setAttribute("successMessage", "密码修改成功");
+        } else {
+            session.setAttribute("errorMessage", "密码修改失败，请重试");
         }
 
         response.sendRedirect(request.getContextPath() + "/customer/profile");

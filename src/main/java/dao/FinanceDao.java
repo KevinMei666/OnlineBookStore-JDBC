@@ -20,6 +20,7 @@ public class FinanceDao {
 
     /**
      * 查询指定日期范围内的采购支出（按日统计）
+     * 注意：使用CreateDate统计，因为采购单创建时即承诺支付，符合权责发生制
      * @param startDate 开始日期（格式：yyyy-MM-dd）
      * @param endDate 结束日期（格式：yyyy-MM-dd）
      * @return List<Map<String, Object>> 包含 date（日期）和 amount（金额）的列表
@@ -65,11 +66,14 @@ public class FinanceDao {
 
     /**
      * 查询指定日期范围内的订单收入（按日统计）
+     * 注意：只统计已支付的订单（PAID, PARTIAL, SHIPPED），排除未支付的CREATED订单
+     * 使用OrderDate统计，因为订单创建时如果支付成功，OrderDate即为收入确认日期
      */
     public List<Map<String, Object>> getRevenueByDay(String startDate, String endDate) {
         String sql = "SELECT DATE(OrderDate) AS date, SUM(TotalAmount) AS amount " +
                 "FROM Orders " +
                 "WHERE Status IN ('PAID', 'PARTIAL', 'SHIPPED') " +
+                "AND TotalAmount > 0 " +
                 "AND DATE(OrderDate) >= ? AND DATE(OrderDate) <= ? " +
                 "GROUP BY DATE(OrderDate) " +
                 "ORDER BY date ASC";
@@ -84,6 +88,7 @@ public class FinanceDao {
         String sql = "SELECT DATE_FORMAT(OrderDate, '%Y-%m') AS date, SUM(TotalAmount) AS amount " +
                 "FROM Orders " +
                 "WHERE Status IN ('PAID', 'PARTIAL', 'SHIPPED') " +
+                "AND TotalAmount > 0 " +
                 "AND DATE(OrderDate) >= ? AND DATE(OrderDate) <= ? " +
                 "GROUP BY DATE_FORMAT(OrderDate, '%Y-%m') " +
                 "ORDER BY date ASC";
@@ -98,6 +103,7 @@ public class FinanceDao {
         String sql = "SELECT DATE_FORMAT(OrderDate, '%Y') AS date, SUM(TotalAmount) AS amount " +
                 "FROM Orders " +
                 "WHERE Status IN ('PAID', 'PARTIAL', 'SHIPPED') " +
+                "AND TotalAmount > 0 " +
                 "AND DATE(OrderDate) >= ? AND DATE(OrderDate) <= ? " +
                 "GROUP BY DATE_FORMAT(OrderDate, '%Y') " +
                 "ORDER BY date ASC";
@@ -139,22 +145,26 @@ public class FinanceDao {
 
     /**
      * 获取总支出（已完成采购单的总金额）
+     * 注意：只统计已完成的采购单，排除未完成的CREATED采购单和金额为0的采购单
      */
     public BigDecimal getTotalExpenses() {
         String sql = "SELECT COALESCE(SUM(TotalAmount), 0) AS total " +
                 "FROM PurchaseOrder " +
-                "WHERE Status = 'COMPLETED'";
+                "WHERE Status = 'COMPLETED' " +
+                "AND TotalAmount > 0";
         
         return executeSingleValueQuery(sql);
     }
 
     /**
      * 获取总收入（已支付订单的总金额）
+     * 注意：只统计已支付的订单，排除未支付的CREATED订单和金额为0的订单
      */
     public BigDecimal getTotalRevenue() {
         String sql = "SELECT COALESCE(SUM(TotalAmount), 0) AS total " +
                 "FROM Orders " +
-                "WHERE Status IN ('PAID', 'PARTIAL', 'SHIPPED')";
+                "WHERE Status IN ('PAID', 'PARTIAL', 'SHIPPED') " +
+                "AND TotalAmount > 0";
         
         return executeSingleValueQuery(sql);
     }

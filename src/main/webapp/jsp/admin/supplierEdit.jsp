@@ -69,7 +69,7 @@
                         <thead class="table-light">
                         <tr>
                             <th>选择</th>
-                            <th>书号</th>
+                            <th>序号</th>
                             <th>书名</th>
                             <th>出版社</th>
                             <th>零售价</th>

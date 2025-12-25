@@ -144,10 +144,11 @@
                                     <thead>
                                         <tr>
                                             <th width="5%">#</th>
-                                            <th width="40%">书名</th>
-                                            <th width="20%">单价</th>
-                                            <th width="20%">数量</th>
-                                            <th width="15%">小计</th>
+                                            <th width="30%">书名</th>
+                                            <th width="15%">书号(ISBN)</th>
+                                            <th width="15%">单价</th>
+                                            <th width="15%">数量</th>
+                                            <th width="20%">小计</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -157,6 +158,8 @@
                                                 model.Book book = bookDao.findById(item.getBookId());
                                                 String bookTitle = book != null && book.getTitle() != null ? 
                                                     book.getTitle() : "未知书名";
+                                                String bookIsbn = book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() ? 
+                                                    book.getIsbn() : "-";
                                                 java.math.BigDecimal subtotal = item.getUnitPrice() != null && item.getQuantity() != null ?
                                                     item.getUnitPrice().multiply(new java.math.BigDecimal(item.getQuantity())) :
                                                     java.math.BigDecimal.ZERO;
@@ -169,6 +172,7 @@
                                                         <%= bookTitle %>
                                                     </a>
                                                 </td>
+                                                <td><%= bookIsbn %></td>
                                                 <td>¥<%= item.getUnitPrice() != null ? item.getUnitPrice() : "0.00" %></td>
                                                 <td><%= item.getQuantity() != null ? item.getQuantity() : 0 %></td>
                                                 <td class="text-danger fw-bold">¥<%= subtotal %></td>

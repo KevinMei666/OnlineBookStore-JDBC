@@ -10,9 +10,13 @@
     String currentRole = (String) session.getAttribute("currentRole");
     boolean isAdmin = "ADMIN".equals(currentRole);
     Map<Integer, String> customerNameMap = (Map<Integer, String>) request.getAttribute("customerNameMap");
+    Map<Integer, String> orderBookTitlesMap = (Map<Integer, String>) request.getAttribute("orderBookTitlesMap");
     
     if (orders == null) {
         orders = new java.util.ArrayList<>();
+    }
+    if (orderBookTitlesMap == null) {
+        orderBookTitlesMap = new java.util.HashMap<>();
     }
     if (filterStatus == null) {
         filterStatus = "";
@@ -91,15 +95,16 @@
                                 <table class="table table-hover table-striped table-modern">
                                     <thead>
                                         <tr>
-                                            <th width="10%">订单ID</th>
+                                            <th width="8%">订单ID</th>
                                             <% if (isAdmin) { %>
-                                                <th width="15%">下单客户</th>
+                                                <th width="12%">下单客户</th>
                                             <% } %>
-                                            <th width="20%">下单时间</th>
-                                            <th width="12%">订单状态</th>
-                                            <th width="10%">收货状态</th>
-                                            <th width="13%">总金额</th>
-                                            <th width="30%">操作</th>
+                                            <th width="18%">书名</th>
+                                            <th width="15%">下单时间</th>
+                                            <th width="10%">订单状态</th>
+                                            <th width="8%">收货状态</th>
+                                            <th width="10%">总金额</th>
+                                            <th width="19%">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -152,6 +157,21 @@
                                                         <span class="text-nowrap"><%= customerLabel %></span>
                                                     </td>
                                                 <% } %>
+                                                <td>
+                                                    <%
+                                                        Integer oid = order.getOrderId();
+                                                        String bookTitle = "未知";
+                                                        if (oid != null && orderBookTitlesMap != null) {
+                                                            String title = orderBookTitlesMap.get(oid);
+                                                            if (title != null && !title.isEmpty()) {
+                                                                bookTitle = title;
+                                                            }
+                                                        }
+                                                    %>
+                                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" title="<%= bookTitle %>">
+                                                        <%= bookTitle %>
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     <%= order.getOrderDate() != null ? 
                                                         order.getOrderDate().format(formatter) : "未知" %>

@@ -133,7 +133,7 @@ public class OrdersDao {
         String insertItemSql = "INSERT INTO OrderItem (OrderID, BookID, Quantity, UnitPrice) " +
                 "VALUES (?, ?, ?, ?)";
         String selectStockSql = "SELECT StockQuantity FROM Book WHERE BookID = ? FOR UPDATE";
-        String updateStockSql = "UPDATE Book SET StockQuantity = StockQuantity - ? WHERE BookID = ?";
+        // 注意：不再在下单时扣减库存，库存扣减在发货时进行（ShipmentService中处理）
         String selectCustomerSql = "SELECT CreditLevel FROM Customer WHERE CustomerID = ?";
         String selectCustomerBalanceSql = "SELECT Balance, CreditLevel, MonthlyLimit FROM Customer WHERE CustomerID = ? FOR UPDATE";
         String updateOrderTotalSql = "UPDATE Orders SET TotalAmount = ? , Status = ? WHERE OrderID = ?";
@@ -143,7 +143,7 @@ public class OrdersDao {
         PreparedStatement orderPs = null;
         PreparedStatement itemPs = null;
         PreparedStatement selectStockPs = null;
-        PreparedStatement updateStockPs = null;
+        // 不再需要updateStockPs，库存扣减在发货时进行
         PreparedStatement selectCustomerPs = null;
         PreparedStatement updateOrderPs = null;
         PreparedStatement selectBalancePs = null;
@@ -184,10 +184,9 @@ public class OrdersDao {
             DBUtil.closeQuietly(rs);
             rs = null;
 
-            // 2. 处理每个订单明细：库存校验 + 插入明细 + 扣减库存
+            // 2. 处理每个订单明细：库存校验 + 插入明细（不扣减库存，库存扣减在发货时进行）
             itemPs = conn.prepareStatement(insertItemSql);
             selectStockPs = conn.prepareStatement(selectStockSql);
-            updateStockPs = conn.prepareStatement(updateStockSql);
 
             AutoPurchaseService autoPurchaseService = new AutoPurchaseService();
             BigDecimal discountedTotal = BigDecimal.ZERO;
@@ -238,13 +237,9 @@ public class OrdersDao {
                     // 即使库存不足，也插入OrderItem，但不扣减库存
                     // 这样订单记录完整，但库存不减少，订单状态会设为CREATED
                 } else {
-                    // 2.3 库存充足时扣减库存
-                    updateStockPs.setInt(1, item.getQuantity());
-                    updateStockPs.setInt(2, item.getBookId());
-                    int updated = updateStockPs.executeUpdate();
-                    if (updated != 1) {
-                        throw new SQLException("Failed to update stock for BookID=" + item.getBookId());
-                    }
+                    // 2.3 库存充足时，只检查库存，不扣减库存
+                    // 库存扣减应该在发货时进行（ShipmentService中处理）
+                    // 这样可以避免下单后未发货就扣减库存的问题
                 }
 
                 // 2.4 插入订单明细（无论库存是否充足都插入）
@@ -350,7 +345,7 @@ public class OrdersDao {
             DBUtil.closeQuietly(orderPs);
             DBUtil.closeQuietly(itemPs);
             DBUtil.closeQuietly(selectStockPs);
-            DBUtil.closeQuietly(updateStockPs);
+            // 不再需要关闭updateStockPs
             DBUtil.closeQuietly(selectCustomerPs);
             DBUtil.closeQuietly(updateOrderPs);
             DBUtil.closeQuietly(conn);
@@ -358,7 +353,8 @@ public class OrdersDao {
     }
 
     public Orders findById(int orderId) {
-        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status " +
+        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status, " +
+                "COALESCE(Confirmed, 0) AS Confirmed " +
                 "FROM Orders WHERE OrderID = ?";
         Connection conn = null;
         PreparedStatement ps = null;
@@ -381,8 +377,8 @@ public class OrdersDao {
     }
 
     public List<Orders> findByCustomerId(int customerId) {
-        // 不依赖 Confirmed 列，兼容历史数据表结构
-        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status " +
+        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status, " +
+                "COALESCE(Confirmed, 0) AS Confirmed " +
                 "FROM Orders WHERE CustomerID = ? ORDER BY OrderID DESC";
         List<Orders> list = new ArrayList<>();
         Connection conn = null;
@@ -408,8 +404,8 @@ public class OrdersDao {
      * 管理员查看所有订单
      */
     public List<Orders> findAll() {
-        // 不依赖 Confirmed 列，兼容历史数据表结构
-        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status " +
+        String sql = "SELECT OrderID, CustomerID, OrderDate, ShippingAddress, TotalAmount, Status, " +
+                "COALESCE(Confirmed, 0) AS Confirmed " +
                 "FROM Orders ORDER BY OrderID DESC";
         List<Orders> list = new ArrayList<>();
         Connection conn = null;
@@ -485,29 +481,78 @@ public class OrdersDao {
         order.setShippingAddress(rs.getString("ShippingAddress"));
         order.setTotalAmount(rs.getBigDecimal("TotalAmount"));
         order.setStatus(rs.getString("Status"));
-        // Confirmed 字段在旧库中不存在，安全降级为 false
-        order.setConfirmed(false);
+        // 读取 Confirmed 字段，如果不存在或为 null 则默认为 false
+        try {
+            Object confirmedObj = rs.getObject("Confirmed");
+            if (confirmedObj != null) {
+                if (confirmedObj instanceof Boolean) {
+                    order.setConfirmed((Boolean) confirmedObj);
+                } else if (confirmedObj instanceof Number) {
+                    order.setConfirmed(((Number) confirmedObj).intValue() != 0);
+                } else {
+                    order.setConfirmed(false);
+                }
+            } else {
+                order.setConfirmed(false);
+            }
+        } catch (SQLException e) {
+            // 如果字段不存在，默认为 false
+            order.setConfirmed(false);
+        }
         return order;
     }
 
     /**
      * 客户确认收货
+     * 只允许 SHIPPED 状态的订单确认收货，且不能重复确认
      */
     public int confirmOrder(int orderId, int customerId) {
-        String sql = "UPDATE Orders SET Confirmed = 1 WHERE OrderID = ? AND CustomerID = ?";
+        // 先检查订单状态和确认状态
+        String checkSql = "SELECT Status, COALESCE(Confirmed, 0) AS Confirmed FROM Orders WHERE OrderID = ? AND CustomerID = ?";
+        String updateSql = "UPDATE Orders SET Confirmed = 1 WHERE OrderID = ? AND CustomerID = ? " +
+                "AND Status = 'SHIPPED' AND (Confirmed IS NULL OR Confirmed = 0)";
         Connection conn = null;
-        PreparedStatement ps = null;
+        PreparedStatement checkPs = null;
+        PreparedStatement updatePs = null;
+        ResultSet rs = null;
         try {
             conn = DBUtil.getConnection();
-            ps = conn.prepareStatement(sql);
-            ps.setInt(1, orderId);
-            ps.setInt(2, customerId);
-            return ps.executeUpdate();
+            // 先检查订单状态
+            checkPs = conn.prepareStatement(checkSql);
+            checkPs.setInt(1, orderId);
+            checkPs.setInt(2, customerId);
+            rs = checkPs.executeQuery();
+            if (!rs.next()) {
+                // 订单不存在或不属于该客户
+                return 0;
+            }
+            String status = rs.getString("Status");
+            boolean confirmed = rs.getInt("Confirmed") != 0;
+            if (!"SHIPPED".equals(status)) {
+                // 订单状态不是 SHIPPED，无法确认收货
+                return 0;
+            }
+            if (confirmed) {
+                // 已经确认过了，不能重复确认
+                return 0;
+            }
+            DBUtil.closeQuietly(rs);
+            rs = null;
+            DBUtil.closeQuietly(checkPs);
+            checkPs = null;
+            
+            // 执行更新
+            updatePs = conn.prepareStatement(updateSql);
+            updatePs.setInt(1, orderId);
+            updatePs.setInt(2, customerId);
+            return updatePs.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
             return 0;
         } finally {
-            DBUtil.closeQuietly(ps);
+            DBUtil.closeQuietly(rs);
+            DBUtil.closeQuietly(checkPs);
+            DBUtil.closeQuietly(updatePs);
             DBUtil.closeQuietly(conn);
         }
     }

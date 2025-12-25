@@ -10,6 +10,7 @@ import dao.ShortageRecordDao;
 import model.Book;
 import model.CartItem;
 import model.OrderItem;
+import model.Orders;
 import model.ShortageRecord;
 
 import javax.servlet.ServletException;
@@ -415,6 +416,36 @@ public class OrderServlet extends HttpServlet {
             orders = ordersDao.findByCustomerId(customerId);
         }
         
+        // 构建订单书名映射，便于在列表中展示书名
+        java.util.Map<Integer, String> orderBookTitlesMap = new java.util.HashMap<>();
+        for (model.Orders o : orders) {
+            if (o.getOrderId() != null) {
+                java.util.List<model.OrderItem> items = orderItemDao.findByOrderId(o.getOrderId());
+                if (items != null && !items.isEmpty()) {
+                    java.util.List<String> bookTitles = new java.util.ArrayList<>();
+                    int totalBooks = 0;
+                    for (model.OrderItem item : items) {
+                        if (item.getBookId() != null) {
+                            model.Book book = bookDao.findById(item.getBookId());
+                            if (book != null && book.getTitle() != null) {
+                                bookTitles.add(book.getTitle());
+                            }
+                            totalBooks++;
+                        }
+                    }
+                    if (!bookTitles.isEmpty()) {
+                        // 显示第一本书，如果有更多则显示"等X本"
+                        String titleDisplay = bookTitles.get(0);
+                        if (totalBooks > 1) {
+                            titleDisplay += " 等" + totalBooks + "本";
+                        }
+                        orderBookTitlesMap.put(o.getOrderId(), titleDisplay);
+                    }
+                }
+            }
+        }
+        request.setAttribute("orderBookTitlesMap", orderBookTitlesMap);
+        
         request.setAttribute("orders", orders);
         request.getRequestDispatcher("/jsp/order/orderList.jsp").forward(request, response);
     }
@@ -586,14 +617,42 @@ public class OrderServlet extends HttpServlet {
 
         try {
             int orderId = Integer.parseInt(orderIdStr);
+            // 先检查订单是否存在且属于当前客户
+            Orders order = ordersDao.findById(orderId);
+            if (order == null) {
+                session.setAttribute("errorMessage", "订单不存在");
+                response.sendRedirect(request.getContextPath() + "/order/list");
+                return;
+            }
+            if (!order.getCustomerId().equals(customerId)) {
+                session.setAttribute("errorMessage", "无权操作此订单");
+                response.sendRedirect(request.getContextPath() + "/order/list");
+                return;
+            }
+            // 检查订单状态
+            if (!"SHIPPED".equals(order.getStatus())) {
+                session.setAttribute("errorMessage", "只有已发货的订单才能确认收货");
+                response.sendRedirect(request.getContextPath() + "/order/list");
+                return;
+            }
+            // 检查是否已确认
+            if (order.getConfirmed() != null && order.getConfirmed()) {
+                session.setAttribute("warningMessage", "该订单已确认收货，无需重复操作");
+                response.sendRedirect(request.getContextPath() + "/order/list");
+                return;
+            }
+            // 执行确认收货
             int updated = ordersDao.confirmOrder(orderId, customerId);
             if (updated > 0) {
                 session.setAttribute("successMessage", "订单已确认收货");
             } else {
-                session.setAttribute("errorMessage", "确认收货失败，请检查订单状态");
+                session.setAttribute("errorMessage", "确认收货失败，请重试");
             }
         } catch (NumberFormatException e) {
             session.setAttribute("errorMessage", "无效的订单ID");
+        } catch (Exception e) {
+            e.printStackTrace();
+            session.setAttribute("errorMessage", "确认收货时发生错误：" + e.getMessage());
         }
         response.sendRedirect(request.getContextPath() + "/order/list");
     }

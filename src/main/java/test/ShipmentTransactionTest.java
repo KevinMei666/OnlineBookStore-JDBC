@@ -30,7 +30,8 @@ public class ShipmentTransactionTest {
 
         // 执行发货事务
         System.out.println("=== 执行发货事务 ===");
-        shipmentService.shipOrderItem(orderId, bookId, shipQuantity);
+        // 测试时使用默认承运商（传递 null）
+        shipmentService.shipOrderItem(orderId, bookId, shipQuantity, null);
         System.out.println("发货事务执行完毕。");
         System.out.println();
 

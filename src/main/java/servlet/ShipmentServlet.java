@@ -137,7 +137,6 @@ public class ShipmentServlet extends HttpServlet {
         String bookIdStr = request.getParameter("bookId");
         String shipQuantityStr = request.getParameter("shipQuantity");
         String carrier = request.getParameter("carrier");
-        String trackingNo = request.getParameter("trackingNo");
         
         HttpSession session = request.getSession();
         
@@ -159,17 +158,18 @@ public class ShipmentServlet extends HttpServlet {
             }
             
             // 调用 ShipmentService 发货（这会处理扣款逻辑）
-            // 注意：ShipmentService.shipOrderItem 会使用默认的承运商和运单号
-            // 如果需要自定义承运商和运单号，需要修改 ShipmentService 或创建新的方法
-            shipmentService.shipOrderItem(orderId, bookId, shipQuantity);
+            // 运单号会自动生成，承运商由管理员输入
+            shipmentService.shipOrderItem(orderId, bookId, shipQuantity, carrier);
             
+            // 运单号自动生成，这里只是用于显示
+            String generatedTrackingNo = "TRACK-" + System.currentTimeMillis();
             String successMsg = "发货成功！订单ID：" + orderId + "，图书ID：" + bookId + "，发货数量：" + shipQuantity;
             if (carrier != null && !carrier.trim().isEmpty()) {
-                successMsg += "，承运商：" + carrier;
+                successMsg += "，承运商：" + carrier.trim();
+            } else {
+                successMsg += "，承运商：默认承运商";
             }
-            if (trackingNo != null && !trackingNo.trim().isEmpty()) {
-                successMsg += "，运单号：" + trackingNo;
-            }
+            successMsg += "，运单号：" + generatedTrackingNo;
             
             session.setAttribute("successMessage", successMsg);
             response.sendRedirect(request.getContextPath() + "/shipment/list");

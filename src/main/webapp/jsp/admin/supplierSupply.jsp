@@ -34,7 +34,7 @@
                 <table class="table table-striped table-hover table-bordered align-middle">
                     <thead class="table-light">
                     <tr>
-                        <th scope="col">书号</th>
+                        <th scope="col">序号</th>
                         <th scope="col">书名</th>
                         <th scope="col">出版社</th>
                         <th scope="col">零售价</th>
